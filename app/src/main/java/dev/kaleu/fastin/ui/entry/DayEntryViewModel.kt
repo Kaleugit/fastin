@@ -68,22 +68,29 @@ class DayEntryViewModel(
     init {
         viewModelScope.launch {
             val existing = repository.observeByDate(date).first()
-            _uiState.value = existing?.let { log ->
-                DayEntryUiState(
-                    date = date,
-                    lastMealTime = log.lastMealTime,
-                    firstMealTime = log.firstMealTime,
-                    caloricDeficit = log.caloricDeficit,
-                    mealQuality = log.mealQuality,
-                    water2l = log.water2l,
-                    alcohol = log.alcohol,
-                    // Sempre com ponto: o campo aceita vírgula na entrada, mas exibir o valor
-                    // salvo com o separador do Locale complicaria o round-trip sem ganho.
-                    weightText = log.weight?.toString() ?: "",
-                    notes = log.notes.orEmpty(),
-                    isLoading = false,
-                )
-            } ?: DayEntryUiState(date = date, isLoading = false)
+
+            // **Mescla, nunca sobrescreve.** Antes isto era `_uiState.value = ...`, o que
+            // descartava qualquer coisa que o usuário tivesse digitado enquanto o Room
+            // respondia. Aqui o valor do banco só preenche campo que o usuário deixou vazio.
+            _uiState.update { current ->
+                if (existing == null) {
+                    current.copy(isLoading = false)
+                } else {
+                    current.copy(
+                        lastMealTime = current.lastMealTime ?: existing.lastMealTime,
+                        firstMealTime = current.firstMealTime ?: existing.firstMealTime,
+                        caloricDeficit = current.caloricDeficit ?: existing.caloricDeficit,
+                        mealQuality = current.mealQuality ?: existing.mealQuality,
+                        water2l = current.water2l ?: existing.water2l,
+                        alcohol = current.alcohol ?: existing.alcohol,
+                        // Sempre com ponto: o campo aceita vírgula na entrada, mas exibir o
+                        // valor salvo com o separador do Locale complicaria o round-trip.
+                        weightText = current.weightText.ifBlank { existing.weight?.toString() ?: "" },
+                        notes = current.notes.ifBlank { existing.notes.orEmpty() },
+                        isLoading = false,
+                    )
+                }
+            }
         }
     }
 
@@ -99,8 +106,14 @@ class DayEntryViewModel(
     /**
      * Upsert. Salvar com tudo vazio é legítimo e **apaga** a linha — o repositório trata
      * isso, para o calendário não ficar com ponto em dia sem dado.
+     *
+     * **Recusa salvar enquanto a carga não terminou.** O `@Upsert` grava a linha inteira: um
+     * save disparado sobre o estado ainda em branco zeraria campos que já estavam no banco e
+     * que o usuário nem tocou. Foi assim que uma "primeira refeição" já registrada sumiu em
+     * uso real.
      */
     fun save(onDone: () -> Unit = {}) {
+        if (_uiState.value.isLoading) return
         viewModelScope.launch {
             repository.save(_uiState.value.toLog())
             _uiState.update { it.copy(isSaved = true) }

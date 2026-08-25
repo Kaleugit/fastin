@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -93,7 +94,17 @@ class DayEntryScreenTest {
                 )
             }
         }
-        flush()
+        // A tela agora só monta o formulário depois da carga (a guarda que fechou a perda
+        // de dados). Sem esperar, os toques caem no card "Carregando".
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline) {
+            flush()
+            val pronto = compose
+                .onAllNodesWithTag("save").fetchSemanticsNodes().isNotEmpty()
+            if (pronto) return
+            Thread.sleep(20)
+        }
+        throw AssertionError("o formulário nunca saiu do estado de carregamento")
     }
 
     private fun save() {

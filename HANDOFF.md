@@ -28,7 +28,7 @@ Esta é a parte mais importante deste documento.
 
 ### Verificado
 
-- **92 testes na JVM, 0 falhas.** Rodados duas vezes com `--rerun-tasks` para descartar flakiness.
+- **95 testes na JVM, 0 falhas.** Rodados duas vezes com `--rerun-tasks` para descartar flakiness.
 - **Lint: 0 erros.**
 - **APK release compila, é assinado (v2+v3) e não declara nenhuma permissão de rede** —
   conferido com `apkanalyzer manifest permissions`.
@@ -69,7 +69,7 @@ Detalhes em `docs/decisions.md` → ADR-007.
 ```powershell
 # Terminal PowerShell, aberto DEPOIS da configuração das variáveis de ambiente.
 cd $HOME/dev/fastin
-./gradlew.bat test              # 92 testes
+./gradlew.bat test              # 95 testes
 ./gradlew.bat assembleRelease   # APK assinado
 ./gradlew.bat test --tests "*ScreenshotTest*"   # regenera docs/screenshots/
 ```
@@ -175,6 +175,30 @@ quando há um ponto só. A dúvida do usuário era legítima e agora é respondi
 
 **Regressão coberta** em `DashboardScreenTest`, com o par positivo/negativo: um ponto mostra
 o aviso, dois pontos fazem o aviso sumir.
+
+### Perda de dados no formulário — corrigida (o achado mais grave)
+
+O usuário relatou que a "primeira refeição" que ele havia registrado sumiu, e que a coluna
+veio vazia no CSV. Não era a exportação: o dado tinha sido apagado do banco.
+
+`DayEntryViewModel.init` buscava o registro do dia de forma assíncrona e fazia
+`_uiState.value = ...` — **sobrescrita incondicional** — enquanto `DayEntryScreen` já
+renderizava o formulário editável, porque nada consultava `isLoading`. Dois caminhos:
+
+1. **Salvar antes da carga chegar.** O `@Upsert` grava a linha inteira; sobre um estado em
+   branco, zerava os campos que o usuário nunca tocou. Foi este que atingiu o usuário.
+2. **A carga chegar depois de o usuário digitar.** A atribuição descartava o que ele tinha
+   acabado de preencher.
+
+Corrigido em três frentes: o `init` **mescla** (valor do banco só preenche campo vazio),
+`save()` recusa enquanto `isLoading`, e a tela mostra estado de carregamento em vez de um
+formulário editável.
+
+Coberto por `DayEntryLoadRaceTest`, com controle negativo. **Nota de mecânica:** o Flow do
+Room emite do executor dele, que `StandardTestDispatcher` não governa — `advanceUntilIdle()`
+volta com o `init` ainda suspenso. Para exercitar "digitou antes da carga" foi preciso um DAO
+falso com a emissão sob controle do teste. O primeiro teste que escrevi falhava por esse
+motivo, não pelo bug.
 
 ### O mínimo real de dias (não é bug, é a regra do domínio)
 

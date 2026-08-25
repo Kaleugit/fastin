@@ -141,7 +141,7 @@ semântica, que existe mesmo quando o desenho falha.
 ./gradlew.bat test
 ```
 
-92 testes, todos na JVM — não precisa de emulador nem de aparelho conectado.
+95 testes, todos na JVM — não precisa de emulador nem de aparelho conectado.
 
 | Suíte | O que cobre |
 |---|---|

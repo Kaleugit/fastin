@@ -102,6 +102,21 @@ fun DayEntryScreen(
             )
         }
 
+        if (state.isLoading) {
+            // Formulário editável antes da carga era como os dados se perdiam: o usuário
+            // preenchia sobre um estado em branco e o save gravava a linha inteira por cima
+            // do que já existia. Enquanto carrega, não há o que tocar.
+            FastinCard(eyebrow = "Carregando") {
+                Text(
+                    text = "buscando o registro deste dia…",
+                    style = FastinType.body,
+                    color = FastinColors.textMuted,
+                    modifier = Modifier.testTag("entryLoading"),
+                )
+            }
+            return@Column
+        }
+
         FastinCard(eyebrow = "Jejum") {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
                 TimeField(
