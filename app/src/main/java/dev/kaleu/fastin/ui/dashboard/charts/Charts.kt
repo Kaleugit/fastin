@@ -37,6 +37,15 @@ import java.time.temporal.ChronoUnit
 private const val CHART_HEIGHT_DP = 140
 
 /**
+ * Margem interna do plot.
+ *
+ * Sem ela o primeiro ponto cai em `x = 0` e o último em `x = largura`, e os marcadores
+ * ficam metade fora do card — visível em qualquer volume de dados. Com um ponto só, o
+ * gráfico parecia vazio: era um disco de 5dp desenhado meio para fora da borda esquerda.
+ */
+private const val PLOT_INSET_DP = 8
+
+/**
  * Escala vertical com folga de 8% em cima e embaixo.
  *
  * Série constante (todo peso igual, por exemplo) tem min == max e dividiria por zero; nesse
@@ -54,6 +63,16 @@ private fun DrawScope.pointOffsets(
     data: ChartData,
     size: Size,
 ): List<Offset> {
+    val inset = PLOT_INSET_DP.dp.toPx()
+    val plotW = (size.width - inset * 2).coerceAtLeast(1f)
+    val plotH = (size.height - inset * 2).coerceAtLeast(1f)
+
+    // Ponto único não tem eixo X: centralizar é a única posição honesta. Deixá-lo na
+    // borda esquerda fazia o card parecer vazio.
+    if (data.points.size == 1) {
+        return listOf(Offset(size.width / 2f, size.height / 2f))
+    }
+
     val (lo, hi) = yScale(data)
     val span = (hi - lo).takeIf { it != 0.0 } ?: 1.0
     val first = data.points.first().date
@@ -63,8 +82,8 @@ private fun DrawScope.pointOffsets(
     return data.points.map { p ->
         // Eixo X por **data real**, não por índice: dias sem registro precisam deixar
         // lacuna proporcional, senão uma semana ausente vira um passo de um dia.
-        val x = (ChronoUnit.DAYS.between(first, p.date) / totalDays) * size.width
-        val y = size.height - ((p.value - lo) / span * size.height)
+        val x = inset + (ChronoUnit.DAYS.between(first, p.date) / totalDays) * plotW
+        val y = inset + (plotH - ((p.value - lo) / span * plotH))
         Offset(x.toFloat(), y.toFloat())
     }
 }
@@ -76,7 +95,16 @@ fun LineChart(data: ChartData, modifier: Modifier = Modifier) {
         val offsets = pointOffsets(data, size)
 
         if (offsets.size == 1) {
-            drawCircle(FastinColors.accent, radius = 5.dp.toPx(), center = offsets.first())
+            // Um ponto não tem tendência. A régua horizontal dá ao disco um contexto de
+            // "este é o nível medido", em vez de deixá-lo boiando no vazio.
+            val c = offsets.first()
+            drawLine(
+                color = FastinColors.hairline,
+                start = Offset(PLOT_INSET_DP.dp.toPx(), c.y),
+                end = Offset(size.width - PLOT_INSET_DP.dp.toPx(), c.y),
+                strokeWidth = 1.dp.toPx(),
+            )
+            drawCircle(FastinColors.accentCore, radius = 5.dp.toPx(), center = c)
             return@Canvas
         }
 
@@ -92,6 +120,7 @@ fun LineChart(data: ChartData, modifier: Modifier = Modifier) {
             lineTo(offsets.first().x, size.height)
             close()
         }
+
         drawPath(fill, brush = FastinColors.accentFadeGradient)
 
         drawPath(

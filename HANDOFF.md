@@ -28,7 +28,7 @@ Esta é a parte mais importante deste documento.
 
 ### Verificado
 
-- **90 testes na JVM, 0 falhas.** Rodados duas vezes com `--rerun-tasks` para descartar flakiness.
+- **92 testes na JVM, 0 falhas.** Rodados duas vezes com `--rerun-tasks` para descartar flakiness.
 - **Lint: 0 erros.**
 - **APK release compila, é assinado (v2+v3) e não declara nenhuma permissão de rede** —
   conferido com `apkanalyzer manifest permissions`.
@@ -69,7 +69,7 @@ Detalhes em `docs/decisions.md` → ADR-007.
 ```powershell
 # Terminal PowerShell, aberto DEPOIS da configuração das variáveis de ambiente.
 cd $HOME/dev/fastin
-./gradlew.bat test              # 90 testes
+./gradlew.bat test              # 92 testes
 ./gradlew.bat assembleRelease   # APK assinado
 ./gradlew.bat test --tests "*ScreenshotTest*"   # regenera docs/screenshots/
 ```
@@ -156,6 +156,33 @@ app/src/main/java/dev/kaleu/fastin/
 
 As personas de desenvolvimento estão em `.claude/skills/` (`architect`, `frontend`, `backend`,
 `devops`, `testing`, `review`), adaptadas de `~/dev/agentes-oda` para contexto Android.
+
+---
+
+## 6b. Achados do primeiro uso real (2026-08-25)
+
+O usuário instalou, registrou 3 dias e relatou que "os gráficos não se formaram". Não era
+falta de dados — eram três bugs de desenho em `ui/dashboard/charts/Charts.kt`:
+
+| Bug | Correção |
+|---|---|
+| Ponto único desenhado em `x = 0`, metade fora do card — o gráfico parecia vazio | Centralizado, com régua horizontal dando contexto de "este é o nível medido" |
+| Eixo X ia de `0` a `largura` exata, sem margem | `PLOT_INSET_DP = 8` nas duas pontas |
+| Marcador do último ponto em `x = largura`, metade cortado | Idem — afetava **qualquer** volume de dados, dava para ver cortado até com 100 dias |
+
+Além disso, o card agora avisa `"1 dia com registro — a linha aparece a partir do segundo"`
+quando há um ponto só. A dúvida do usuário era legítima e agora é respondida dentro do app.
+
+**Regressão coberta** em `DashboardScreenTest`, com o par positivo/negativo: um ponto mostra
+o aviso, dois pontos fazem o aviso sumir.
+
+### O mínimo real de dias (não é bug, é a regra do domínio)
+
+- **Peso**: 1 dia já vira ponto; 2+ viram linha.
+- **Horas de jejum**: precisa de **dois dias consecutivos** — o jejum de um dia usa a última
+  refeição do dia anterior. E o ponto de *hoje* só existe depois que a primeira refeição de
+  hoje for registrada.
+- **Heatmap**: funciona com pouco dado, mas só faz sentido visual com algumas semanas.
 
 ---
 

@@ -35,7 +35,7 @@ refeição de D. Atravessa a meia-noite e respeita horário de verão — há te
 ## Começar
 
 ```bash
-./gradlew test              # 90 testes, tudo na JVM, sem emulador
+./gradlew test              # 92 testes, tudo na JVM, sem emulador
 ./gradlew assembleRelease   # APK em app/build/outputs/apk/release/
 ```
 
@@ -84,7 +84,7 @@ horário de verão testáveis.
 
 ## Testes
 
-90 testes, todos na JVM. Não precisa de emulador nem de aparelho conectado.
+92 testes, todos na JVM. Não precisa de emulador nem de aparelho conectado.
 
 | Suíte | O que cobre |
 |---|---|

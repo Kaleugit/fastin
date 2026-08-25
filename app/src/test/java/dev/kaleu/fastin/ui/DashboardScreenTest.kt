@@ -272,6 +272,52 @@ class DashboardScreenTest {
         )
     }
 
+    /**
+     * Regressão do primeiro uso real: com um único ponto o gráfico de linha desenhava um
+     * disco de 5dp em `x = 0`, metade fora do card — e o usuário concluiu, com razão, que
+     * o gráfico não tinha se formado.
+     *
+     * Aqui a metade positiva: um dia com registro mostra o aviso.
+     */
+    @Test
+    fun `um unico ponto avisa que a linha ainda nao aparece`() {
+        // Jejum de um dia só: exige a última refeição de anteontem + a primeira de ontem.
+        runBlocking {
+            repo.saveAll(
+                listOf(
+                    FastingLog(today.minusDays(2), lastMealTime = LocalTime.of(20, 0)),
+                    FastingLog(today.minusDays(1), firstMealTime = LocalTime.of(12, 0)),
+                ),
+            )
+        }
+        setContent()
+
+        assertTrue(
+            "o card deveria explicar por que ainda não há linha",
+            tagExists("hint_default-fasting"),
+        )
+    }
+
+    /** Metade negativa: com dois pontos há linha, e o aviso some. */
+    @Test
+    fun `com dois pontos o aviso desaparece`() {
+        runBlocking {
+            repo.saveAll(
+                listOf(
+                    FastingLog(today.minusDays(3), lastMealTime = LocalTime.of(20, 0)),
+                    FastingLog(today.minusDays(2), firstMealTime = LocalTime.of(12, 0), lastMealTime = LocalTime.of(20, 0)),
+                    FastingLog(today.minusDays(1), firstMealTime = LocalTime.of(12, 0)),
+                ),
+            )
+        }
+        setContent()
+
+        assertTrue(
+            "com 2 pontos o aviso não deveria aparecer",
+            !tagExists("hint_default-fasting"),
+        )
+    }
+
     @Test
     fun `titulo do dashboard aparece`() {
         setContent()

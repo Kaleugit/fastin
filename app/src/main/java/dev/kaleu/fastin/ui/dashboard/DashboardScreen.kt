@@ -156,6 +156,17 @@ private fun ChartCard(
         if (data.isEmpty) {
             ChartEmptyState()
         } else {
+            if (data.points.size == 1 && data.config.type != ChartType.BIG_NUMBER) {
+                // Sem isto o usuário vê um ponto solto e conclui que o gráfico quebrou —
+                // foi exatamente o que aconteceu no primeiro uso real.
+                Text(
+                    text = "1 dia com registro — a linha aparece a partir do segundo",
+                    style = FastinType.label,
+                    color = FastinColors.textMuted,
+                    modifier = Modifier.testTag("hint_${data.config.id}"),
+                )
+                Box(Modifier.height(Spacing.sm))
+            }
             when (data.config.type) {
                 ChartType.LINE -> LineChart(data)
                 ChartType.SCATTER -> ScatterChart(data)
