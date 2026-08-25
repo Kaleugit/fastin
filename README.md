@@ -53,6 +53,9 @@ quebra nada, só não produz APK instalável.
 
 Instalação no celular e reconstrução do ambiente: **[`docs/build-apk.md`](docs/build-apk.md)**.
 
+Retomando o trabalho depois de uma pausa? Comece por **[`HANDOFF.md`](HANDOFF.md)** — ele diz
+o que está verificado, o que **não** está, e as convenções de teste que não são óbvias.
+
 ---
 
 ## Stack
