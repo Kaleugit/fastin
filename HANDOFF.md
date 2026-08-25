@@ -1,7 +1,10 @@
 # HANDOFF — estado do projeto
 
-Escrito ao fim da sessão de construção inicial. O app está completo e entregue; o próximo
-passo é o **uso real no aparelho** e as melhorias que vierem dele.
+Escrito ao fim da sessão de construção inicial e **atualizado após o primeiro uso real**.
+
+**Estado em 2026-08-25:** v1.0.2 instalada e rodando no aparelho do usuário. Três dias de
+uso revelaram dois bugs — um deles de perda de dados — e ambos estão corrigidos e
+confirmados no aparelho. O usuário atualizou, os dados continuaram, e funcionou.
 
 ---
 
@@ -10,7 +13,7 @@ passo é o **uso real no aparelho** e as melhorias que vierem dele.
 | Item | Onde |
 |---|---|
 | Código | `C:\Users\kaleu\dev\fastin` · [github.com/Kaleugit/fastin](https://github.com/Kaleugit/fastin) (público) |
-| APK pronto para instalar | `C:\Users\kaleu\Desktop\fastin.apk` — 1,5 MB, assinado v2+v3 |
+| APK pronto para instalar | `C:\Users\kaleu\Desktop\fastin.apk` — 1,5 MB, assinado v2+v3, **v1.0.2 / versionCode 3** |
 | APK gerado pelo build | `app/build/outputs/apk/release/app-release.apk` |
 | Chave de assinatura | `fastin-release.jks` na raiz — **não versionada** |
 | Screenshots das telas | `docs/screenshots/*.png` |
@@ -36,19 +39,27 @@ Esta é a parte mais importante deste documento.
   `apkanalyzer dex packages`. Se isso quebrar, o usuário perde a configuração do dashboard.
 - **As seis telas renderizam** — o `ScreenshotTest` compõe e desenha cada uma de verdade.
 
-### NÃO verificado — o app nunca rodou num Android real
+### Verificado no aparelho — uso real, 2026-08-25
 
-Nada abaixo foi observado funcionando. São os primeiros lugares a olhar ao testar:
+O usuário instalou, usou por três dias e depois atualizou para a v1.0.2. Confirmado por ele:
 
-| O quê | Por que pode falhar |
+- **Sideload e atualização por cima preservando o banco.** `versionCode` novo + mesma chave,
+  como `docs/build-apk.md` §4 descreve. Ele confirmou que os dados continuaram.
+- **Formulário do dia**, incluindo o `TimePickerDialog` do sistema para os horários.
+- **Export CSV**: gera o arquivo em Downloads e o conteúdo é legível. Foi o export que
+  revelou a perda de dados — a coluna `first_meal_time` vinha vazia.
+- **Calendário e dashboard** renderizam e refletem o que foi registrado.
+- **Fontes e sombras** no aparelho dele: nenhuma queixa visual.
+
+### NÃO verificado — ainda sem observação em uso
+
+| O quê | Por que ainda importa |
 |---|---|
-| **Sombras neumórficas** | `spotColor`/`ambientColor` exigem API 28+. Em Android 8–8.1 a sombra sai preta padrão. Ver se o visual segura no seu aparelho. |
-| **Time picker** | É o `TimePickerDialog` do sistema, em 24h. Nunca foi aberto de fato. |
-| **Notificações** | O agendamento é testado (`MilestoneNotifierTest`), mas o disparo real do WorkManager e o pedido de permissão no Android 13+ não. |
-| **Escrita em Downloads** | Usa MediaStore em API 29+. O caminho de erro nunca foi exercitado num aparelho. |
-| **Import de CSV** | O picker de arquivo do sistema e o `content://` URI que ele devolve. |
-| **Fontes variáveis** | `FontVariation` exige API 26+. Se os pesos saírem errados, é aqui. |
-| **Performance do tick** | O relógio recompõe 1×/s. Testado, mas não medido em aparelho real. |
+| **Notificações** | O agendamento tem teste (`MilestoneNotifierTest`), mas o disparo real do WorkManager e o pedido de permissão do Android 13+ nunca foram vistos. **É o maior buraco restante.** |
+| **Import de CSV** | O export foi exercitado de verdade; o import não. O picker do sistema e o `content://` que ele devolve seguem sem verificação — e é justamente o caminho de restaurar backup ao trocar de aparelho. |
+| **Sombras em API 26–27** | `spotColor` exige API 28+. No aparelho do usuário funcionou; em Android 8–8.1 a sombra sai preta padrão. |
+| **Streak em uso prolongado** | Só jejuns fechados contam. Com poucos dias não dá para julgar se a regra é a certa. |
+| **Performance do tick** | O relógio recompõe 1×/s. Testado, não medido em aparelho. |
 
 ---
 
@@ -212,7 +223,14 @@ motivo, não pelo bug.
 
 ## 7. Primeira coisa a fazer na volta
 
-1. Instalar o APK e usar por alguns dias de verdade.
-2. Conferir os itens da tabela §2 "NÃO verificado" — principalmente notificações e export CSV.
-3. Trazer o que incomodar no uso. Ajuste de UX vindo de uso real vale mais do que qualquer
-   feature nova da lista §5.
+O ciclo de instalar-e-usar já rodou uma vez e valeu a pena: os dois únicos bugs do projeto
+saíram dele, não dos 95 testes. Repetir é o melhor uso do tempo.
+
+1. **Continuar usando.** Cada semana de uso real cobre território que teste nenhum alcança.
+2. **Fechar o maior buraco: as notificações.** É a única feature entregue que nunca foi vista
+   funcionando. Ligue em Ajustes, registre uma última refeição, e veja se o aviso de 16h
+   chega. Se não chegar, comece por `MilestoneNotifier.reschedule` e pela permissão
+   `POST_NOTIFICATIONS` no Android 13+.
+3. **Testar o import de CSV** ao menos uma vez. É o caminho de restaurar backup ao trocar de
+   aparelho — descobrir que ele não funciona no dia da troca seria o pior momento possível.
+4. **Trazer o que incomodar.** Ajuste vindo de uso real vale mais que qualquer item da §5.
