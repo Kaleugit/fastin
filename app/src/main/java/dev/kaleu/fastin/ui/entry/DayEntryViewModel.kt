@@ -1,0 +1,110 @@
+package dev.kaleu.fastin.ui.entry
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dev.kaleu.fastin.data.repo.FastingLogRepository
+import dev.kaleu.fastin.domain.model.FastingLog
+import dev.kaleu.fastin.domain.model.Quality
+import dev.kaleu.fastin.domain.model.Tristate
+import dev.kaleu.fastin.domain.model.YesNo
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalTime
+
+/**
+ * Estado do formulário (PROJECT.md §3.2).
+ *
+ * [weightText] guarda o texto **cru** em vez de `Double?` de propósito: enquanto se digita
+ * "82,4" o valor passa por "8", "82", "82," — estados que não convertem. Validar a cada
+ * tecla rejeitaria digitação legítima. A conversão acontece uma vez, no salvar.
+ */
+data class DayEntryUiState(
+    val date: LocalDate,
+    val lastMealTime: LocalTime? = null,
+    val firstMealTime: LocalTime? = null,
+    val caloricDeficit: Tristate? = null,
+    val mealQuality: Quality? = null,
+    val water2l: Tristate? = null,
+    val alcohol: YesNo? = null,
+    val weightText: String = "",
+    val notes: String = "",
+    val isLoading: Boolean = true,
+    val isSaved: Boolean = false,
+) {
+    /** Peso normalizado. Vírgula do teclado pt-BR vira ponto; lixo vira null, não zero. */
+    val weight: Double?
+        get() = weightText.replace(',', '.').toDoubleOrNull()
+
+    /** O texto digitado não converte para número — o campo está preenchido mas inválido. */
+    val hasInvalidWeight: Boolean
+        get() = weightText.isNotBlank() && weight == null
+
+    fun toLog(): FastingLog = FastingLog(
+        date = date,
+        lastMealTime = lastMealTime,
+        firstMealTime = firstMealTime,
+        caloricDeficit = caloricDeficit,
+        mealQuality = mealQuality,
+        water2l = water2l,
+        alcohol = alcohol,
+        weight = weight,
+        notes = notes.takeIf { it.isNotBlank() },
+    )
+}
+
+class DayEntryViewModel(
+    private val repository: FastingLogRepository,
+    private val date: LocalDate,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(DayEntryUiState(date = date))
+    val uiState: StateFlow<DayEntryUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val existing = repository.observeByDate(date).first()
+            _uiState.value = existing?.let { log ->
+                DayEntryUiState(
+                    date = date,
+                    lastMealTime = log.lastMealTime,
+                    firstMealTime = log.firstMealTime,
+                    caloricDeficit = log.caloricDeficit,
+                    mealQuality = log.mealQuality,
+                    water2l = log.water2l,
+                    alcohol = log.alcohol,
+                    // Sempre com ponto: o campo aceita vírgula na entrada, mas exibir o valor
+                    // salvo com o separador do Locale complicaria o round-trip sem ganho.
+                    weightText = log.weight?.toString() ?: "",
+                    notes = log.notes.orEmpty(),
+                    isLoading = false,
+                )
+            } ?: DayEntryUiState(date = date, isLoading = false)
+        }
+    }
+
+    fun setLastMealTime(time: LocalTime?) = _uiState.update { it.copy(lastMealTime = time) }
+    fun setFirstMealTime(time: LocalTime?) = _uiState.update { it.copy(firstMealTime = time) }
+    fun setCaloricDeficit(v: Tristate?) = _uiState.update { it.copy(caloricDeficit = v) }
+    fun setMealQuality(v: Quality?) = _uiState.update { it.copy(mealQuality = v) }
+    fun setWater2l(v: Tristate?) = _uiState.update { it.copy(water2l = v) }
+    fun setAlcohol(v: YesNo?) = _uiState.update { it.copy(alcohol = v) }
+    fun setWeightText(v: String) = _uiState.update { it.copy(weightText = v) }
+    fun setNotes(v: String) = _uiState.update { it.copy(notes = v) }
+
+    /**
+     * Upsert. Salvar com tudo vazio é legítimo e **apaga** a linha — o repositório trata
+     * isso, para o calendário não ficar com ponto em dia sem dado.
+     */
+    fun save(onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.save(_uiState.value.toLog())
+            _uiState.update { it.copy(isSaved = true) }
+            onDone()
+        }
+    }
+}

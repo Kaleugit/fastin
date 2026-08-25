@@ -1,0 +1,82 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "a13856d3fe1832a2f3d5cd5fd43f79c7",
+    "entities": [
+      {
+        "tableName": "fasting_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`date` TEXT NOT NULL, `last_meal_time` TEXT, `first_meal_time` TEXT, `caloric_deficit` TEXT, `meal_quality` TEXT, `water_2l` TEXT, `alcohol` TEXT, `weight` REAL, `notes` TEXT, PRIMARY KEY(`date`))",
+        "fields": [
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastMealTime",
+            "columnName": "last_meal_time",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "firstMealTime",
+            "columnName": "first_meal_time",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "caloricDeficit",
+            "columnName": "caloric_deficit",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "mealQuality",
+            "columnName": "meal_quality",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "water2l",
+            "columnName": "water_2l",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "alcohol",
+            "columnName": "alcohol",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "weight",
+            "columnName": "weight",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "date"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a13856d3fe1832a2f3d5cd5fd43f79c7')"
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Sem android.permission.INTERNET, de propósito: o app é 100% offline (PROJECT.md §1).
+      A ausência é o que garante o critério "funciona em modo avião".
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+      O WorkManager declara ACCESS_NETWORK_STATE para suportar constraints de rede. Nós não
+      usamos nenhuma constraint de rede, e o app precisa ser demonstravelmente offline
+      (PROJECT.md §6) — inclusive na tela de permissões que o usuário vê. Removida do merge.
+
+      RECEIVE_BOOT_COMPLETED fica: é o que faz o WorkManager reagendar os marcos de jejum
+      depois de um reboot, que é justamente o comportamento desejado.
+    -->
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
+
+    <!--
+      allowBackup="false" de propósito: o Android Auto Backup mandaria o banco para o Google
+      Drive do usuário. O app existe para ser offline, e a spec define o CSV como o backup
+      manual (PROJECT.md §4.2). Enviar um log de saúde para a nuvem por padrão contrariaria
+      a premissa inteira.
+    -->
+    <application
+        android:name=".FastinApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Fastin">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Fastin">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

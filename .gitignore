@@ -1,0 +1,26 @@
+# Build
+.gradle/
+build/
+app/build/
+.kotlin/
+
+# Assinatura e config local — NUNCA versionar.
+# Perder a chave impede atualizar o app instalado (ver docs/build-apk.md).
+*.jks
+*.keystore
+keystore.properties
+local.properties
+
+# Artefatos
+*.apk
+*.aab
+
+# Galeria gerada a partir dos PNGs (2,4 MB de base64) — regenerável:
+# python scripts/gen-galeria.py
+docs/screenshots/galeria.html
+
+# IDE / SO
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

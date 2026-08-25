@@ -1,0 +1,17 @@
+# Normaliza para LF no repositório; o checkout no Windows continua CRLF onde faz sentido.
+* text=auto eol=lf
+
+# Scripts de shell QUEBRAM com CRLF — o gradlew é executado por sh.
+gradlew text eol=lf
+*.sh text eol=lf
+
+# .bat é interpretado pelo cmd.exe, que espera CRLF.
+*.bat text eol=crlf
+
+# Binários: nunca converter.
+*.png binary
+*.jpg binary
+*.ttf binary
+*.jar binary
+*.apk binary
+*.jks binary
