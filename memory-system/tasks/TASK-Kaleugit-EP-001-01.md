@@ -1,6 +1,6 @@
 # TASK-Kaleugit-EP-001-01 - Persistir a preferencia de notificacoes entre sessoes
 
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 1
 - Description: A preferencia de notificacoes vive so em memoria (`FastinApplication.notificationsEnabled`) e o `SettingsUiState` nasce `false`. Ao fechar o app o toggle volta a desligado e o coletor de reagendamento nunca reinicia. Persistir em DataStore, restaurar no `onCreate` do Application e alimentar a tela de Ajustes a partir do store.
 - Depends On: None
@@ -8,7 +8,10 @@
 - Branch: TASK-Kaleugit-EP-001-01-implement
 - Workstreams: None
 - Execution Mode: Standard
-- Last Updated: 2026-08-27 00:00
+- Last Updated: 2026-08-27 14:30
+- Completed: 2026-08-27 14:30
+- Evidence: PASS — SettingsNotificationsTest 6/6 (:app:testDebugUnitTest); suite 114/114; lint 0 erros
+- prior-art: app/src/main/java/dev/kaleu/fastin/data/prefs/DashboardConfigStore.kt:33 — padrão de DataStore injetado com arquivo próprio, reaproveitado integralmente
 
 ## Contexto de entrada
 - app/src/main/java/dev/kaleu/fastin/FastinApplication.kt

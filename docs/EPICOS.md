@@ -16,7 +16,7 @@
 ## Epic List
 
 ### EP-001 - Correção de bugs do primeiro ciclo de uso real (v1.2)
-- Status: PLANNED
+- Status: DONE
 - Domain: App Android fastin (UI + notificações locais)
 - Objective: corrigir os cinco defeitos relatados pelo usuário após uso continuado da
   v1.0.2 e entregar a v1.2 instalável por cima da versão atual.
@@ -48,6 +48,10 @@
     "funciona em modo avião" (`docs/PROJECT.md` §6) é inegociável.
 - Change Log:
   - 2026-08-27 - Épico criado a partir da lista de bugs do usuário após uso real da v1.0.2.
+  - 2026-08-27 - Todas as 6 tasks concluídas. 114 testes / 0 falhas, lint 0 erros, APK v1.2
+    (versionCode 4) assinado com a mesma chave da versão instalada. **A verificação em
+    aparelho segue pendente** e não fazia parte do Completion Signal: a correção do teclado
+    não é demonstrável na JVM e o ciclo real das notificações nunca foi observado.
 
 ## Decisoes Autonomas
 - DA-001: `docs/PROJECT.md` é usado como `PROJECT_SPECS.md` — Criterio: padrão de adaptação —
@@ -59,6 +63,10 @@
 - DA-003: os cinco bugs viram um único épico em vez de cinco — Criterio: um domínio por
   épico — Racional: todos pertencem ao mesmo bounded context (o app) e compartilham um único
   sinal de conclusão observável, que é a v1.2 instalada.
+- DA-010: a correção do teclado foi feita no root (`MainActivity`) e não no formulário —
+  Criterio: escalação prevista na task 03 — Racional: o `Box` do root aplica
+  `windowInsetsPadding(systemBars)` sobre todas as telas; um `imePadding()` local somaria com
+  ele e contaria a nav bar duas vezes. Corrigir no root vale para todas as telas.
 - DA-004: o bump de versão vira task própria e não um passo solto — Criterio: ownership de
   wiring — Racional: sem `versionCode` novo o Android recusa a atualização por cima, e a
   entrega inteira fica inutilizável no aparelho. É deliverable com dono, não efeito colateral.

@@ -1,6 +1,6 @@
 # TASK-Kaleugit-EP-001-05 - Avisar sobre alteracoes nao salvas ao sair do formulario
 
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 1
 - Description: `onBack` chama `popBackStack()` direto e nada compara o estado atual com o carregado, entao horario informado e perdido em silencio. Rastrear alteracao pendente no ViewModel e exigir decisao do usuario ao sair. Sem autosave (DA-006).
 - Depends On: TASK-Kaleugit-EP-001-02
@@ -8,7 +8,10 @@
 - Branch: TASK-Kaleugit-EP-001-05-implement
 - Workstreams: None
 - Execution Mode: Critical
-- Last Updated: 2026-08-27 00:00
+- Last Updated: 2026-08-27 14:30
+- Completed: 2026-08-27 14:30
+- Evidence: PASS — DayEntryScreenTest 6 casos novos (aviso, ausência de aviso, descartar não grava, salvar grava, cancelar, pós-save) + DayEntryLoadRaceTest sem regressão
+- prior-art: app/src/main/java/dev/kaleu/fastin/ui/entry/DayEntryViewModel.kt:135 — guarda de isLoading no save, reusada como base de hasUnsavedChanges
 
 ## Contexto de entrada
 - app/src/main/java/dev/kaleu/fastin/ui/entry/DayEntryViewModel.kt

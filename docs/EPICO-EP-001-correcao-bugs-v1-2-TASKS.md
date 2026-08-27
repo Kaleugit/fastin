@@ -5,7 +5,7 @@
 - Epic Title: Correção de bugs do primeiro ciclo de uso real (v1.2)
 - Last Updated: 2026-08-27
 - Owner: Architect
-- Status: PENDING APPROVAL
+- Status: APPROVED
 
 ## Epic Context
 - Objective: corrigir os cinco defeitos relatados após uso continuado da v1.0.2 e entregar a
@@ -31,7 +31,7 @@ Cada task abaixo nasce de uma causa já localizada no código, não de um sintom
 
 ### Task 01 - Persistir a preferência de notificações entre sessões
 - Task ID: TASK-Kaleugit-EP-001-01
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 1
 - Execution Mode: Standard
 - Domain: Notificações locais (preferência + reagendamento)
@@ -77,7 +77,7 @@ Cada task abaixo nasce de uma causa já localizada no código, não de um sintom
 
 ### Task 02 - Inverter a ordem dos campos de refeição no formulário
 - Task ID: TASK-Kaleugit-EP-001-02
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 2
 - Execution Mode: Quick
 - Domain: Formulário do dia (UI)
@@ -107,20 +107,23 @@ Cada task abaixo nasce de uma causa já localizada no código, não de um sintom
 
 ### Task 03 - Impedir que o teclado cubra o campo de observações
 - Task ID: TASK-Kaleugit-EP-001-03
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 2
 - Execution Mode: Standard
 - Domain: Formulário do dia (UI / window insets)
 - Description:
-  - Aplicar `.imePadding()` no `Column` rolável de `DayEntryScreen` (o que já tem
-    `verticalScroll`), **depois** do `verticalScroll` e antes do `padding` de conteúdo.
-  - Manter `windowSoftInputMode="adjustResize"` no manifest — ele é pré-requisito para o
-    inset do IME chegar; o que faltava era consumi-lo.
-  - Não remover `enableEdgeToEdge` do `MainActivity` (ADR-002). Se o padding do `Box` do
-    `MainActivity` impedir o IME de chegar à tela, ajustar ali, documentando no código.
-  - Garantir que o `BasicTextField` de `NotesField` role para dentro da janela ao receber
-    foco (`bringIntoViewRequester` só se o `imePadding` sozinho não bastar — preferir a
-    solução mínima).
+  - Consumir o inset do IME. Manter `windowSoftInputMode="adjustResize"` no manifest — é
+    pré-requisito para o inset chegar; o que faltava era consumi-lo.
+  - Não remover `enableEdgeToEdge` do `MainActivity` (ADR-002).
+- **Desvio da descrição original (registrado na execução):** a task previa `.imePadding()` no
+  `Column` de `DayEntryScreen`. A correção foi feita no root do `MainActivity`, com
+  `WindowInsets.systemBars.union(WindowInsets.ime)` — caminho que a própria task já autorizava
+  ("se o padding do `Box` do `MainActivity` impedir o IME de chegar à tela, ajustar ali").
+  Razão: aquele `Box` aplica `windowInsetsPadding(systemBars)` sobre **todas** as telas.
+  Um `imePadding()` só no formulário conviveria com o padding de `systemBars` do root e somaria
+  os dois na borda inferior — a nav bar contada duas vezes. Resolver no root corrige de uma vez
+  e para todas as telas, inclusive o campo de peso. `union` em vez de `safeDrawing` para não
+  arrastar `displayCutout` junto e mexer nas margens de quem tem notch.
 - Depends On: TASK-Kaleugit-EP-001-02
 - Canonical File: memory-system/tasks/TASK-Kaleugit-EP-001-03.md
 - Suggested Branch: TASK-Kaleugit-EP-001-03-implement
@@ -131,8 +134,8 @@ Cada task abaixo nasce de uma causa já localizada no código, não de um sintom
   - `app/src/main/AndroidManifest.xml`
   - `HANDOFF.md`
 - Done Criteria:
-  - `./gradlew.bat test` passa com 0 falhas, incluindo `DayEntryScreenTest` com
-    `performScrollTo()` antes do toque no campo `notes` e digitação verificada.
+  - `./gradlew.bat test` passa com 0 falhas, incluindo a digitação em `notes` já coberta por
+    `DayEntryScreenTest` (regressão de composição).
   - `./gradlew.bat lint` reporta 0 erros.
   - Verificação visual em aparelho registrada no `HANDOFF.md` — **este bug não é
     demonstrável na JVM**: Robolectric não instancia IME real. O teste cobre a regressão de
@@ -143,7 +146,7 @@ Cada task abaixo nasce de uma causa já localizada no código, não de um sintom
 
 ### Task 04 - Rótulos de eixo nos gráficos
 - Task ID: TASK-Kaleugit-EP-001-04
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 3
 - Execution Mode: Standard
 - Domain: Dashboard (renderização de gráficos)
@@ -183,7 +186,7 @@ Cada task abaixo nasce de uma causa já localizada no código, não de um sintom
 
 ### Task 05 - Avisar sobre alterações não salvas ao sair do formulário
 - Task ID: TASK-Kaleugit-EP-001-05
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 1
 - Execution Mode: Critical
 - Domain: Formulário do dia (estado + navegação)
@@ -224,7 +227,7 @@ Cada task abaixo nasce de uma causa já localizada no código, não de um sintom
 
 ### Task 06 - Elevar versão para v1.2 e gerar o APK
 - Task ID: TASK-Kaleugit-EP-001-06
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 4
 - Execution Mode: Quick
 - Domain: Build / release

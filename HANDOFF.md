@@ -2,6 +2,10 @@
 
 Escrito ao fim da sessão de construção inicial e **atualizado após o primeiro uso real**.
 
+**Estado em 2026-08-27:** **v1.2 construída, ainda não instalada no aparelho.** A v1.0.2
+rodou alguns dias e rendeu cinco relatos do usuário; os cinco viraram o épico EP-001 e estão
+corrigidos, com 114 testes na JVM e lint limpo. Falta o passo que importa: instalar e usar.
+
 **Estado em 2026-08-25:** v1.0.2 instalada e rodando no aparelho do usuário. Três dias de
 uso revelaram dois bugs — um deles de perda de dados — e ambos estão corrigidos e
 confirmados no aparelho. O usuário atualizou, os dados continuaram, e funcionou.
@@ -13,8 +17,9 @@ confirmados no aparelho. O usuário atualizou, os dados continuaram, e funcionou
 | Item | Onde |
 |---|---|
 | Código | `C:\Users\kaleu\dev\fastin` · [github.com/Kaleugit/fastin](https://github.com/Kaleugit/fastin) (público) |
-| APK pronto para instalar | `C:\Users\kaleu\Desktop\fastin.apk` — 1,5 MB, assinado v2+v3, **v1.0.2 / versionCode 3** |
-| APK gerado pelo build | `app/build/outputs/apk/release/app-release.apk` |
+| APK pronto para instalar | `C:\Users\kaleu\Desktop\fastin.apk` — **ainda a v1.0.2 / versionCode 3**; a v1.2 está só em `app/build/` |
+| APK da v1.2 | `app/build/outputs/apk/release/app-release.apk` — 1,51 MB, **v1.2 / versionCode 4**, assinado v2+v3 com a mesma chave (SHA-256 `66d96c44…`), conferida contra o APK instalado |
+| Épico de correções | `docs/EPICOS.md` (EP-001) · `docs/EPICO-EP-001-correcao-bugs-v1-2-TASKS.md` · tasks canônicas em `memory-system/tasks/` |
 | Chave de assinatura | `fastin-release.jks` na raiz — **não versionada** |
 | Screenshots das telas | `docs/screenshots/*.png` |
 | Página no portfólio | `kaleu.dev/projetos/fastin` — já em produção |
@@ -31,7 +36,7 @@ Esta é a parte mais importante deste documento.
 
 ### Verificado
 
-- **95 testes na JVM, 0 falhas.** Rodados duas vezes com `--rerun-tasks` para descartar flakiness.
+- **114 testes na JVM, 0 falhas** (95 da v1.0.2 + 19 de regressão do EP-001).
 - **Lint: 0 erros.**
 - **APK release compila, é assinado (v2+v3) e não declara nenhuma permissão de rede** —
   conferido com `apkanalyzer manifest permissions`.
@@ -55,6 +60,8 @@ O usuário instalou, usou por três dias e depois atualizou para a v1.0.2. Confi
 
 | O quê | Por que ainda importa |
 |---|---|
+| **Teclado sobre as observações (v1.2)** | A correção é de *window inset* e **não é demonstrável na JVM**: Robolectric não instancia IME real. O teste cobre a composição do campo; se o teclado ainda cobrir, o problema está no `MainActivity` e não no formulário. **Primeira coisa a olhar ao instalar.** |
+| **Notificação sobrevivendo ao fechamento (v1.2)** | A persistência tem teste com store reaberto sobre o mesmo arquivo, mas o ciclo real — ligar, matar o app, reabrir e ver o aviso chegar — nunca foi visto. Junta-se ao buraco abaixo. |
 | **Notificações** | O agendamento tem teste (`MilestoneNotifierTest`), mas o disparo real do WorkManager e o pedido de permissão do Android 13+ nunca foram vistos. **É o maior buraco restante.** |
 | **Import de CSV** | O export foi exercitado de verdade; o import não. O picker do sistema e o `content://` que ele devolve seguem sem verificação — e é justamente o caminho de restaurar backup ao trocar de aparelho. |
 | **Sombras em API 26–27** | `spotColor` exige API 28+. No aparelho do usuário funcionou; em Android 8–8.1 a sombra sai preta padrão. |
@@ -80,7 +87,7 @@ Detalhes em `docs/decisions.md` → ADR-007.
 ```powershell
 # Terminal PowerShell, aberto DEPOIS da configuração das variáveis de ambiente.
 cd $HOME/dev/fastin
-./gradlew.bat test              # 95 testes
+./gradlew.bat test              # 114 testes
 ./gradlew.bat assembleRelease   # APK assinado
 ./gradlew.bat test --tests "*ScreenshotTest*"   # regenera docs/screenshots/
 ```
@@ -221,16 +228,46 @@ motivo, não pelo bug.
 
 ---
 
+## 6c. EP-001 — os cinco relatos do segundo ciclo de uso (2026-08-27)
+
+O usuário usou a v1.0.2 e trouxe cinco coisas. Cada uma foi rastreada até a causa antes de
+virar task; o breakdown está em `docs/EPICO-EP-001-correcao-bugs-v1-2-TASKS.md`.
+
+| Relato | Causa real | Correção |
+|---|---|---|
+| "a notificação, quando o app é fechado, ela desativa automaticamente" | A preferência morava só em memória: campo volátil no `FastinApplication` e `SettingsUiState` nascendo `false`. Morto o processo, voltava ao default | `NotificationPrefsStore` (DataStore, arquivo próprio); `onCreate` restaura o agendamento |
+| Primeira e última refeição na ordem trocada | Ordem literal dos `TimeField` | Invertidas na tela. **A regra do domínio não mudou** — o jejum de D continua indo de `lastMealTime(D-1)` a `firstMealTime(D)` |
+| Teclado cobre o campo de observações | `WindowInsets.systemBars` não inclui o IME, e com edge-to-edge é o inset que redimensiona, não a janela | `union(WindowInsets.ime)` no root |
+| Gráficos sem índice | Nenhum renderizador de `Charts.kt` emitia texto | Rótulos de eixo (extremos + datas) em linha e dispersão; legenda de escala no heatmap |
+| Horário se perde sem salvar | `onBack` fazia `popBackStack()` direto; nada comparava o formulário com o banco | `hasUnsavedChanges` + aviso de saída com três opções, cobrindo o `BackHandler` |
+
+### Duas decisões que valem carregar adiante
+
+**Nada de autosave.** Foi considerado e recusado (DA-006). `save()` é upsert da linha inteira
+e formulário vazio **apaga** o dia — gravar a cada tecla transformaria cada campo limpo numa
+escrita imediata, reabrindo exatamente a classe de bug do §6b.
+
+**O boot só age quando a notificação está ligada.** A primeira versão da correção chamava o
+caminho de desligar sempre, e isso fazia todo `onCreate` tocar o WorkManager para cancelar o
+que aquele processo nunca agendou. Além de trabalho à toa, era um caminho de crash dentro do
+`Application.onCreate` — que mata o app inteiro. O teste pegou isso.
+
+---
+
 ## 7. Primeira coisa a fazer na volta
 
 O ciclo de instalar-e-usar já rodou uma vez e valeu a pena: os dois únicos bugs do projeto
 saíram dele, não dos 95 testes. Repetir é o melhor uso do tempo.
 
-1. **Continuar usando.** Cada semana de uso real cobre território que teste nenhum alcança.
-2. **Fechar o maior buraco: as notificações.** É a única feature entregue que nunca foi vista
-   funcionando. Ligue em Ajustes, registre uma última refeição, e veja se o aviso de 16h
-   chega. Se não chegar, comece por `MilestoneNotifier.reschedule` e pela permissão
-   `POST_NOTIFICATIONS` no Android 13+.
-3. **Testar o import de CSV** ao menos uma vez. É o caminho de restaurar backup ao trocar de
+1. **Instalar a v1.2 e conferir os cinco relatos.** O APK está em
+   `app/build/outputs/apk/release/app-release.apk` (versionCode 4, mesma chave — conferida
+   contra o APK instalado, digest `66d96c44…`). **Copie-o para o Desktop por cima do antigo
+   só depois de instalar**, senão você perde o único APK da versão que hoje funciona.
+2. **Olhar primeiro o teclado nas observações.** É a única das cinco correções que a JVM não
+   consegue provar — Robolectric não instancia IME real.
+3. **Fechar o maior buraco: as notificações.** Continua sendo a única feature entregue que
+   nunca foi vista funcionando. Agora tem um passo a mais: ligue em Ajustes, **mate o app**,
+   reabra e confirme que continua ligada — é o bug que a v1.2 diz ter corrigido.
+4. **Testar o import de CSV** ao menos uma vez. É o caminho de restaurar backup ao trocar de
    aparelho — descobrir que ele não funciona no dia da troca seria o pior momento possível.
-4. **Trazer o que incomodar.** Ajuste vindo de uso real vale mais que qualquer item da §5.
+5. **Trazer o que incomodar.** Ajuste vindo de uso real vale mais que qualquer item da §5.

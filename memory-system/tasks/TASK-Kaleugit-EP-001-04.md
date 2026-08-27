@@ -1,6 +1,6 @@
 # TASK-Kaleugit-EP-001-04 - Rotulos de eixo nos graficos
 
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 3
 - Description: `Charts.kt` desenha so o traco: nenhum renderizador emite texto, entao o grafico nao diz quanto nem quando. Adicionar rotulos de eixo Y (min/max com a unidade da metrica) e de eixo X (data inicial/final) em LINE e SCATTER, e legenda de escala no HEATMAP.
 - Depends On: None
@@ -8,7 +8,10 @@
 - Branch: TASK-Kaleugit-EP-001-04-implement
 - Workstreams: None
 - Execution Mode: Standard
-- Last Updated: 2026-08-27 00:00
+- Last Updated: 2026-08-27 14:30
+- Completed: 2026-08-27 14:30
+- Evidence: PASS — DashboardScreenTest: rótulos com dados, ausência com estado vazio, série constante com um valor só, legenda do heatmap
+- prior-art: app/src/main/java/dev/kaleu/fastin/ui/dashboard/DashboardScreen.kt:189 — formatScalar; mesma regra de casas decimais aplicada aos rótulos
 
 ## Contexto de entrada
 - app/src/main/java/dev/kaleu/fastin/ui/dashboard/charts/Charts.kt

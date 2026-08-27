@@ -1,6 +1,6 @@
 # TASK-Kaleugit-EP-001-06 - Elevar versao para v1.2 e gerar o APK
 
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 4
 - Description: Sem `versionCode` novo o Android recusa a atualizacao por cima e a entrega inteira fica inutilizavel no aparelho. Elevar versao, rodar a bateria completa e conferir que o APK segue sem permissao de rede.
 - Depends On: TASK-Kaleugit-EP-001-01, TASK-Kaleugit-EP-001-02, TASK-Kaleugit-EP-001-03, TASK-Kaleugit-EP-001-04, TASK-Kaleugit-EP-001-05
@@ -8,7 +8,10 @@
 - Branch: TASK-Kaleugit-EP-001-06-implement
 - Workstreams: None
 - Execution Mode: Quick
-- Last Updated: 2026-08-27 00:00
+- Last Updated: 2026-08-27 14:30
+- Completed: 2026-08-27 14:30
+- Evidence: PASS — apk summary: dev.kaleu.fastin 4 1.2; apksigner: v2+v3, SHA-256 66d96c44… idêntico ao APK instalado; apkanalyzer manifest permissions sem permissão de rede
+- prior-art: docs/build-apk.md §4 — procedimento de bump e sideload já documentado
 
 ## Contexto de entrada
 - app/build.gradle.kts

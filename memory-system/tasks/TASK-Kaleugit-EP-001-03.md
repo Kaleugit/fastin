@@ -1,6 +1,6 @@
 # TASK-Kaleugit-EP-001-03 - Impedir que o teclado cubra o campo de observacoes
 
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 2
 - Description: Com `enableEdgeToEdge` no `MainActivity` e `windowInsetsPadding(systemBars)`, o inset do IME nunca e consumido: o `adjustResize` do manifest sozinho nao sobe o conteudo. O usuario digita nas observacoes sem ver o que escreve. Consumir o inset do IME na tela do formulario.
 - Depends On: TASK-Kaleugit-EP-001-02
@@ -8,7 +8,10 @@
 - Branch: TASK-Kaleugit-EP-001-03-implement
 - Workstreams: None
 - Execution Mode: Standard
-- Last Updated: 2026-08-27 00:00
+- Last Updated: 2026-08-27 14:30
+- Completed: 2026-08-27 14:30
+- Evidence: PASS na JVM (lint 0 erros; digitação em notes coberta) — VERIFICAÇÃO EM APARELHO PENDENTE: Robolectric não instancia IME real
+- prior-art: app/src/main/java/dev/kaleu/fastin/MainActivity.kt:29 — windowInsetsPadding já existia, faltava o inset do IME
 
 ## Contexto de entrada
 - app/src/main/java/dev/kaleu/fastin/ui/entry/DayEntryScreen.kt

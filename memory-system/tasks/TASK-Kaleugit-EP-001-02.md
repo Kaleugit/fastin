@@ -1,6 +1,6 @@
 # TASK-Kaleugit-EP-001-02 - Inverter a ordem dos campos de refeicao no formulario
 
-- Status: PENDING
+- Status: COMPLETED
 - Priority: 2
 - Description: No card "Jejum" do formulario do dia, "Ultima refeicao" e composta antes de "Primeira refeicao", contrariando a ordem cronologica do dia. Inverter apenas a ordem de composicao dos dois `TimeField`.
 - Depends On: None
@@ -8,7 +8,10 @@
 - Branch: TASK-Kaleugit-EP-001-02-implement
 - Workstreams: None
 - Execution Mode: Quick
-- Last Updated: 2026-08-27 00:00
+- Last Updated: 2026-08-27 14:30
+- Completed: 2026-08-27 14:30
+- Evidence: PASS — DayEntryScreenTest: posição (firstMealTime acima) + controle negativo (campos não trocaram no banco); screenshots regeneradas
+- prior-art: none
 
 ## Contexto de entrada
 - app/src/main/java/dev/kaleu/fastin/ui/entry/DayEntryScreen.kt
