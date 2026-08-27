@@ -98,12 +98,48 @@ O `-r` reinstala por cima preservando os dados. Na primeira instalação tanto f
 
 ## 4. Atualizar o app depois
 
+### O jeito que funciona na prática (sem adb)
+
+Este é o caminho **confirmado em uso real** — v1.0.2 → v1.2 em 2026-08-27, dados preservados:
+
+1. **Exporte o CSV pelo app** (Ajustes → Exportar para Downloads) antes de qualquer coisa.
+2. Plugue o cabo e copie o APK para a pasta **Download** do celular. O Windows abre o
+   aparelho como pasta comum; não é preciso terminal.
+3. No celular: **Arquivos → Downloads**, toque no APK, confirme **Atualizar**.
+4. Abra o app e confira que os dias continuam lá.
+
+**A regra é uma só: atualizar, nunca desinstalar.** Se o botão diz "Atualizar", os dados
+ficam. Se o sistema oferecer instalar como app novo ou pedir para desinstalar antes, **pare**
+— isso significa que a assinatura não bate, e seguir em frente apagaria o banco.
+
+### Por que o CSV vem primeiro
+
+`allowBackup="false"` está no manifesto de propósito (o Auto Backup mandaria um log de saúde
+para o Drive), então **não existe outra cópia do banco** e sem root não há como tirá-la de lá.
+
+E há um caminho sem volta: se a versão nova apresentar problema, você **não consegue
+reinstalar a anterior por cima** — o Android recusa `versionCode` menor que o instalado. O
+único retorno seria desinstalar, que apaga tudo. O CSV é o que transforma isso numa
+reimportação chata em vez de perda do histórico.
+
+### Com adb, quando o cabo e a depuração USB já estiverem ativos
+
 ```powershell
 ./gradlew.bat assembleRelease
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
+Se `adb devices` listar mais de um alvo (um `emulator-*` fantasma costuma ficar preso),
+`adb kill-server` antes de plugar resolve a ambiguidade.
+
 Os dados são preservados porque o `applicationId` e a **chave de assinatura** são os mesmos.
+Vale conferir isso **antes** de instalar, comparando o certificado do APK novo com o do que
+está no aparelho:
+
+```powershell
+apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
+eleasepp-release.apk
+```
 
 > ### Guarde a chave junto do backup
 >

@@ -2,9 +2,11 @@
 
 Escrito ao fim da sessão de construção inicial e **atualizado após o primeiro uso real**.
 
-**Estado em 2026-08-27:** **v1.2 construída, ainda não instalada no aparelho.** A v1.0.2
-rodou alguns dias e rendeu cinco relatos do usuário; os cinco viraram o épico EP-001 e estão
-corrigidos, com 114 testes na JVM e lint limpo. Falta o passo que importa: instalar e usar.
+**Estado em 2026-08-27:** **v1.2 instalada no aparelho, dados preservados.** A v1.0.2 rendeu
+cinco relatos do usuário; os cinco viraram o épico EP-001 e estão corrigidos, com 114 testes
+na JVM e lint limpo. O usuário exportou o CSV, atualizou por cima e confirmou: "funcionou e
+nem perdi os dados". Falta observar as correções em uso — em especial o teclado e o ciclo
+real das notificações.
 
 **Estado em 2026-08-25:** v1.0.2 instalada e rodando no aparelho do usuário. Três dias de
 uso revelaram dois bugs — um deles de perda de dados — e ambos estão corrigidos e
@@ -17,8 +19,9 @@ confirmados no aparelho. O usuário atualizou, os dados continuaram, e funcionou
 | Item | Onde |
 |---|---|
 | Código | `C:\Users\kaleu\dev\fastin` · [github.com/Kaleugit/fastin](https://github.com/Kaleugit/fastin) (público) |
-| APK pronto para instalar | `C:\Users\kaleu\Desktop\fastin.apk` — **ainda a v1.0.2 / versionCode 3**; a v1.2 está só em `app/build/` |
-| APK da v1.2 | `app/build/outputs/apk/release/app-release.apk` — 1,51 MB, **v1.2 / versionCode 4**, assinado v2+v3 com a mesma chave (SHA-256 `66d96c44…`), conferida contra o APK instalado |
+| APK instalado | `C:\Users\kaleu\Desktop\fastin-v1.2.apk` — **v1.2 / versionCode 4**, instalado no aparelho em 2026-08-27 |
+| APK da versão anterior | `C:\Users\kaleu\Desktop\fastin.apk` — v1.0.2 / versionCode 3. **Não serve de rollback**: o Android recusa `versionCode` menor. Guardado só como histórico |
+| APK gerado pelo build | `app/build/outputs/apk/release/app-release.apk` — 1,51 MB, assinado v2+v3 (SHA-256 `66d96c44…`) |
 | Épico de correções | `docs/EPICOS.md` (EP-001) · `docs/EPICO-EP-001-correcao-bugs-v1-2-TASKS.md` · tasks canônicas em `memory-system/tasks/` |
 | Chave de assinatura | `fastin-release.jks` na raiz — **não versionada** |
 | Screenshots das telas | `docs/screenshots/*.png` |
@@ -44,6 +47,15 @@ Esta é a parte mais importante deste documento.
   `apkanalyzer dex packages`. Se isso quebrar, o usuário perde a configuração do dashboard.
 - **As seis telas renderizam** — o `ScreenshotTest` compõe e desenha cada uma de verdade.
 
+### Verificado no aparelho — v1.2, 2026-08-27
+
+- **Atualização por cima da v1.0.2 preservando o banco.** Confirmado pelo usuário. O método
+  que funcionou está em `docs/build-apk.md` §4: exportar o CSV, copiar o APK para a pasta
+  Download pelo cabo, tocar no arquivo, confirmar **Atualizar**. **Sem adb** — o caminho por
+  terminal existe e está documentado, mas não é o que ele usa.
+- **A regra que basta lembrar:** atualizar, nunca desinstalar. Se o botão diz "Atualizar", os
+  dados ficam.
+
 ### Verificado no aparelho — uso real, 2026-08-25
 
 O usuário instalou, usou por três dias e depois atualizou para a v1.0.2. Confirmado por ele:
@@ -60,7 +72,7 @@ O usuário instalou, usou por três dias e depois atualizou para a v1.0.2. Confi
 
 | O quê | Por que ainda importa |
 |---|---|
-| **Teclado sobre as observações (v1.2)** | A correção é de *window inset* e **não é demonstrável na JVM**: Robolectric não instancia IME real. O teste cobre a composição do campo; se o teclado ainda cobrir, o problema está no `MainActivity` e não no formulário. **Primeira coisa a olhar ao instalar.** |
+| **Teclado sobre as observações (v1.2)** | A correção é de *window inset* e **não é demonstrável na JVM**: Robolectric não instancia IME real. A v1.2 está no aparelho, mas ninguém digitou nas observações ainda. Se o teclado continuar cobrindo, o problema está no `MainActivity`, não no formulário. **Primeira coisa a olhar.** |
 | **Notificação sobrevivendo ao fechamento (v1.2)** | A persistência tem teste com store reaberto sobre o mesmo arquivo, mas o ciclo real — ligar, matar o app, reabrir e ver o aviso chegar — nunca foi visto. Junta-se ao buraco abaixo. |
 | **Notificações** | O agendamento tem teste (`MilestoneNotifierTest`), mas o disparo real do WorkManager e o pedido de permissão do Android 13+ nunca foram vistos. **É o maior buraco restante.** |
 | **Import de CSV** | O export foi exercitado de verdade; o import não. O picker do sistema e o `content://` que ele devolve seguem sem verificação — e é justamente o caminho de restaurar backup ao trocar de aparelho. |
@@ -259,10 +271,7 @@ que aquele processo nunca agendou. Além de trabalho à toa, era um caminho de c
 O ciclo de instalar-e-usar já rodou uma vez e valeu a pena: os dois únicos bugs do projeto
 saíram dele, não dos 95 testes. Repetir é o melhor uso do tempo.
 
-1. **Instalar a v1.2 e conferir os cinco relatos.** O APK está em
-   `app/build/outputs/apk/release/app-release.apk` (versionCode 4, mesma chave — conferida
-   contra o APK instalado, digest `66d96c44…`). **Copie-o para o Desktop por cima do antigo
-   só depois de instalar**, senão você perde o único APK da versão que hoje funciona.
+1. **Conferir os cinco relatos em uso.** A v1.2 já está instalada; o que falta é usar.
 2. **Olhar primeiro o teclado nas observações.** É a única das cinco correções que a JVM não
    consegue provar — Robolectric não instancia IME real.
 3. **Fechar o maior buraco: as notificações.** Continua sendo a única feature entregue que
