@@ -117,21 +117,24 @@ fun DayEntryScreen(
             return@Column
         }
 
+        // Ordem **cronológica do dia**: quem preenche o dia come primeiro de manhã e pela
+        // última vez à noite. A regra do domínio continua sendo outra e não muda com isto —
+        // o jejum de D vai de `lastMealTime(D-1)` até `firstMealTime(D)` (PROJECT.md §2).
         FastinCard(eyebrow = "Jejum") {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-                TimeField(
-                    label = "Última refeição do dia",
-                    value = state.lastMealTime,
-                    onPick = { pickTime(state.lastMealTime, onLastMealTime) },
-                    onClear = { onLastMealTime(null) },
-                    testTag = "lastMealTime",
-                )
                 TimeField(
                     label = "Primeira refeição do dia",
                     value = state.firstMealTime,
                     onPick = { pickTime(state.firstMealTime, onFirstMealTime) },
                     onClear = { onFirstMealTime(null) },
                     testTag = "firstMealTime",
+                )
+                TimeField(
+                    label = "Última refeição do dia",
+                    value = state.lastMealTime,
+                    onPick = { pickTime(state.lastMealTime, onLastMealTime) },
+                    onClear = { onLastMealTime(null) },
+                    testTag = "lastMealTime",
                 )
             }
         }

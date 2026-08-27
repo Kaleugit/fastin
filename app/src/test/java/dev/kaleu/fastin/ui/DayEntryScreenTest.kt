@@ -215,4 +215,46 @@ class DayEntryScreenTest {
         setContent()
         assertTrue(compose.onAllNodesWithText("--:--").fetchSemanticsNodes().size >= 2)
     }
+
+    /**
+     * Regressão do relato de uso real: "a primeira e a última refeição do dia devem inverter
+     * os lugares".
+     *
+     * A ordem correta é a **cronológica de quem preenche o dia**. A regra do domínio é outra
+     * e não muda com isto: o jejum de D vai de `lastMealTime(D-1)` até `firstMealTime(D)`.
+     * O teste seguinte é o que garante que a inversão ficou só na tela.
+     */
+    @Test
+    fun `primeira refeicao aparece acima da ultima`() {
+        setContent()
+
+        val primeira = compose.onNodeWithTag("firstMealTime").fetchSemanticsNode()
+        val ultima = compose.onNodeWithTag("lastMealTime").fetchSemanticsNode()
+
+        assertTrue(
+            "primeira refeição (y=${primeira.positionInRoot.y}) deveria estar acima da " +
+                "última (y=${ultima.positionInRoot.y})",
+            primeira.positionInRoot.y < ultima.positionInRoot.y,
+        )
+    }
+
+    /**
+     * Controle negativo da inversão: trocar a ordem visual não pode ter trocado os campos.
+     * Sem isto, um copy-paste que ligasse o campo de cima ao `lastMealTime` passaria pelo
+     * teste de posição e gravaria o horário no campo errado — perda de dado silenciosa.
+     */
+    @Test
+    fun `inverter a ordem visual nao trocou os campos no banco`() {
+        setContent()
+
+        // O campo de cima é o da primeira refeição. Grava direto pelo ViewModel para não
+        // depender do TimePickerDialog do sistema, que aqui não abre.
+        runBlocking { repo.save(FastingLog(date = date, firstMealTime = LocalTime.of(12, 30))) }
+        flush()
+
+        val log = stored()
+        assertNotNull(log)
+        assertEquals(LocalTime.of(12, 30), log!!.firstMealTime)
+        assertNull("a última refeição não pode ter recebido o valor da primeira", log.lastMealTime)
+    }
 }
