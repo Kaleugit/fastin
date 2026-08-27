@@ -8,7 +8,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -34,7 +36,16 @@ class MainActivity : ComponentActivity() {
                     Modifier
                         .fillMaxSize()
                         .background(FastinColors.surfaceBase)
-                        .windowInsetsPadding(WindowInsets.systemBars),
+                        // `systemBars` **não** inclui o teclado. Sozinho, ele deixava o IME
+                        // subir por cima do conteúdo: o usuário digitava nas observações sem
+                        // ver o que escrevia. `adjustResize` no manifest é pré-requisito,
+                        // mas com edge-to-edge quem redimensiona é este inset — não a janela.
+                        //
+                        // `union` em vez de `safeDrawing` de propósito: preserva exatamente o
+                        // recorte que o aparelho do usuário já mostra e só acrescenta o
+                        // teclado. `safeDrawing` traria `displayCutout` junto e mexeria nas
+                        // margens de quem tem notch, sem necessidade.
+                        .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime)),
                 ) {
                     FastinNavHost(
                         container = container,
