@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.kaleu.fastin.data.backup.CsvBackup
+import dev.kaleu.fastin.data.prefs.NotificationPrefsStore
 import dev.kaleu.fastin.data.repo.FastingLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ class SettingsViewModel(
     private val repository: FastingLogRepository,
     private val backup: CsvBackup,
     private val clock: Clock,
+    private val notificationPrefs: NotificationPrefsStore,
     private val onNotificationsToggled: (Boolean) -> Unit = {},
 ) : ViewModel() {
 
@@ -34,6 +36,14 @@ class SettingsViewModel(
         viewModelScope.launch {
             repository.observeAll().collect { logs ->
                 _uiState.update { it.copy(totalDays = logs.size) }
+            }
+        }
+        // O toggle reflete o **disco**, nunca um default otimista. Antes o estado nascia
+        // `false` e reabrir o app mostrava as notificações desligadas mesmo com os marcos
+        // agendados — a tela mentia sobre o que o app estava fazendo.
+        viewModelScope.launch {
+            notificationPrefs.enabled.collect { enabled ->
+                _uiState.update { it.copy(notificationsEnabled = enabled) }
             }
         }
     }
@@ -75,8 +85,12 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Não escreve no estado local: quem grava é o `FastinApplication`, e o coletor do `init`
+     * traz o valor de volta. Uma escrita, uma leitura — dois donos do mesmo booleano é como
+     * a tela e o agendador passariam a discordar.
+     */
     fun setNotificationsEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(notificationsEnabled = enabled) }
         onNotificationsToggled(enabled)
     }
 }

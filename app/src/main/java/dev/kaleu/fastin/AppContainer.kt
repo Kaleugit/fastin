@@ -4,7 +4,9 @@ import android.content.Context
 import dev.kaleu.fastin.data.backup.CsvBackup
 import dev.kaleu.fastin.data.db.FastinDatabase
 import dev.kaleu.fastin.data.prefs.DashboardConfigStore
+import dev.kaleu.fastin.data.prefs.NotificationPrefsStore
 import dev.kaleu.fastin.data.prefs.dashboardDataStoreOf
+import dev.kaleu.fastin.data.prefs.notificationPrefsDataStoreOf
 import dev.kaleu.fastin.data.repo.FastingLogRepository
 import java.time.Clock
 
@@ -20,5 +22,6 @@ class AppContainer(
 
     val fastingLogRepository = FastingLogRepository(db.fastingLogDao())
     val dashboardConfigStore = DashboardConfigStore(dashboardDataStoreOf(context))
+    val notificationPrefsStore = NotificationPrefsStore(notificationPrefsDataStoreOf(context))
     val csvBackup = CsvBackup(context, fastingLogRepository)
 }

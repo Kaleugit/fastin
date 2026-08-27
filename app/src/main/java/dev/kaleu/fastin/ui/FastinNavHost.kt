@@ -148,6 +148,7 @@ fun FastinNavHost(
                                     container.fastingLogRepository,
                                     container.csvBackup,
                                     container.clock,
+                                    container.notificationPrefsStore,
                                     onNotificationsToggled,
                                 )
                             }
