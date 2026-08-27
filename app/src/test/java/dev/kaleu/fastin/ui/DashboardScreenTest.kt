@@ -5,6 +5,7 @@ import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -322,5 +324,75 @@ class DashboardScreenTest {
     fun `titulo do dashboard aparece`() {
         setContent()
         compose.onNodeWithText("Dashboard").assertIsDisplayed()
+    }
+
+    // --- Rótulos de eixo (o gráfico não dizia quanto nem quando) -------------------------
+
+    /**
+     * Metade positiva: com peso de 76 a 80 kg na série, os dois extremos precisam aparecer
+     * escritos. Antes o Canvas desenhava só o traço e a curva não tinha escala nenhuma.
+     */
+    @Test
+    fun `grafico de serie mostra os extremos e as datas`() {
+        seedFasting()
+        setContent()
+        awaitUntil("o gráfico de peso ganhar eixo") { tagExists("axisMax_default-weight") }
+
+        compose.onNodeWithTag("axisMax_default-weight", useUnmergedTree = true)
+            .assertTextEquals("80,0kg")
+        compose.onNodeWithTag("axisMin_default-weight", useUnmergedTree = true)
+            .assertTextEquals("76,0kg")
+
+        // Eixo X: a série vai do primeiro ao último dia **com registro**, não do início do
+        // período — é o intervalo que o traço realmente cobre.
+        compose.onNodeWithTag("axisFrom_default-weight", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("axisTo_default-weight", useUnmergedTree = true).assertExists()
+    }
+
+    /**
+     * Metade negativa. Sem ela o teste acima passaria com rótulos desenhados sempre, inclusive
+     * sobre o estado vazio — um "0,0kg" inventado sobre dado que não existe seria pior que a
+     * ausência de eixo que o usuário reclamou.
+     */
+    @Test
+    fun `sem dados nao ha rotulo de eixo`() {
+        setContent()
+        awaitUntil("os cards vazios aparecerem") { tagExists("chart_default-weight") }
+
+        assertFalse(tagExists("axisMax_default-weight"))
+        assertFalse(tagExists("axisMin_default-weight"))
+        assertFalse(tagExists("axisFrom_default-weight"))
+        assertFalse(tagExists("axisTo_default-weight"))
+    }
+
+    /**
+     * Série constante: os cinco dias têm exatamente 16h de jejum. Repetir "16,0h" em cima e
+     * embaixo sugeriria uma variação que não existe, então só o valor aparece.
+     */
+    @Test
+    fun `serie constante mostra um valor so`() {
+        seedFasting()
+        setContent()
+        awaitUntil("o gráfico de jejum ganhar eixo") { tagExists("axisMax_default-fasting") }
+
+        compose.onNodeWithTag("axisMax_default-fasting", useUnmergedTree = true)
+            .assertTextEquals("16,0h")
+        assertFalse(
+            "série sem variação não pode exibir dois extremos",
+            tagExists("axisMin_default-fasting"),
+        )
+    }
+
+    /** O heatmap codifica valor em opacidade; sem legenda a mancha não vira número. */
+    @Test
+    fun `heatmap tem legenda de escala`() {
+        seedFasting()
+        setContent()
+        awaitUntil("o heatmap renderizar") { tagExists("legendLess_default-heatmap") }
+
+        compose.onNodeWithTag("legendLess_default-heatmap", useUnmergedTree = true)
+            .assertTextEquals("menos")
+        compose.onNodeWithTag("legendMore_default-heatmap", useUnmergedTree = true)
+            .assertTextEquals("mais")
     }
 }

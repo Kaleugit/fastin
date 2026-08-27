@@ -1,6 +1,7 @@
 package dev.kaleu.fastin.ui.dashboard.charts
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,13 +21,17 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import dev.kaleu.fastin.domain.metrics.ChartData
 import dev.kaleu.fastin.domain.metrics.MetricPoint
 import dev.kaleu.fastin.ui.theme.FastinColors
+import dev.kaleu.fastin.ui.theme.FastinShapes
 import dev.kaleu.fastin.ui.theme.FastinType
 import dev.kaleu.fastin.ui.theme.Spacing
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 /**
  * Renderizadores em Canvas puro (ADR-001).
@@ -44,6 +50,78 @@ private const val CHART_HEIGHT_DP = 140
  * gráfico parecia vazio: era um disco de 5dp desenhado meio para fora da borda esquerda.
  */
 private const val PLOT_INSET_DP = 8
+
+/** Lado do quadradinho da legenda do heatmap. */
+private const val LEGEND_SWATCH_DP = 10
+
+private val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
+
+/** "28 ago". Ano fica de fora: o período mais longo do app é 90 dias. */
+private val AXIS_DATE = DateTimeFormatter.ofPattern("d MMM", PT_BR)
+
+/**
+ * Rótulo de valor do eixo Y.
+ *
+ * Taxas são inteiras — "62%" e não "62,0%". O resto ganha uma casa decimal, com vírgula,
+ * pela mesma razão do `formatScalar` do dashboard: "82,40000001 kg" é ruído.
+ */
+private fun axisValue(value: Double, data: ChartData): String {
+    val metric = data.config.metric
+    val n = if (metric.isRate) "%.0f".format(value) else "%.1f".format(value).replace('.', ',')
+    return if (metric.unit.isEmpty()) n else "$n${metric.unit}"
+}
+
+@Composable
+private fun AxisLabel(text: String, testTag: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = FastinType.label,
+        color = FastinColors.textMuted,
+        modifier = modifier.testTag(testTag),
+    )
+}
+
+/**
+ * Moldura de eixos em volta do plot.
+ *
+ * Existe porque o gráfico não dizia **quanto** nem **quando**: o Canvas desenhava só o traço
+ * e o usuário via uma curva sem escala nenhuma. Os rótulos são `Text` do Compose, nunca
+ * `drawText` nativo — ADR-001, e canvas nativo não é acelerado por GPU.
+ *
+ * Ficam **fora** da área de desenho, não sobrepostos: [CHART_HEIGHT_DP] continua sendo a
+ * altura do plot, e o card cresce o tanto que os rótulos ocupam. Sobrepor economizaria
+ * espaço ao custo de texto em cima da curva, que é onde o traço é mais denso.
+ */
+@Composable
+private fun PlotFrame(
+    data: ChartData,
+    modifier: Modifier = Modifier,
+    plot: @Composable () -> Unit,
+) {
+    val id = data.config.id
+    val single = data.points.size == 1 || data.min == data.max
+
+    Column(modifier.fillMaxWidth()) {
+        AxisLabel(axisValue(data.max, data), "axisMax_$id")
+
+        plot()
+
+        // Série constante (ou de um ponto) tem um valor só. Repetir o mesmo número em cima
+        // e embaixo sugeriria uma variação que não existe.
+        if (!single) {
+            AxisLabel(axisValue(data.min, data), "axisMin_$id")
+        }
+
+        Box(Modifier.height(Spacing.xs))
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            AxisLabel(data.points.first().date.format(AXIS_DATE), "axisFrom_$id")
+            if (data.points.size > 1) {
+                AxisLabel(data.points.last().date.format(AXIS_DATE), "axisTo_$id")
+            }
+        }
+    }
+}
 
 /**
  * Escala vertical com folga de 8% em cima e embaixo.
@@ -90,7 +168,13 @@ private fun DrawScope.pointOffsets(
 
 @Composable
 fun LineChart(data: ChartData, modifier: Modifier = Modifier) {
-    Canvas(modifier.fillMaxWidth().height(CHART_HEIGHT_DP.dp)) {
+    if (data.points.isEmpty()) return
+    PlotFrame(data, modifier) { LinePlot(data) }
+}
+
+@Composable
+private fun LinePlot(data: ChartData) {
+    Canvas(Modifier.fillMaxWidth().height(CHART_HEIGHT_DP.dp)) {
         if (data.points.isEmpty()) return@Canvas
         val offsets = pointOffsets(data, size)
 
@@ -140,8 +224,13 @@ fun LineChart(data: ChartData, modifier: Modifier = Modifier) {
 
 @Composable
 fun ScatterChart(data: ChartData, modifier: Modifier = Modifier) {
-    Canvas(modifier.fillMaxWidth().height(CHART_HEIGHT_DP.dp)) {
-        if (data.points.isEmpty()) return@Canvas
+    if (data.points.isEmpty()) return
+    PlotFrame(data, modifier) { ScatterPlot(data) }
+}
+
+@Composable
+private fun ScatterPlot(data: ChartData) {
+    Canvas(Modifier.fillMaxWidth().height(CHART_HEIGHT_DP.dp)) {
         pointOffsets(data, size).forEach { offset ->
             drawCircle(FastinColors.accent.copy(alpha = 0.75f), radius = 3.5.dp.toPx(), center = offset)
         }
@@ -156,7 +245,52 @@ fun ScatterChart(data: ChartData, modifier: Modifier = Modifier) {
  */
 @Composable
 fun HeatmapChart(data: ChartData, modifier: Modifier = Modifier) {
-    Canvas(modifier.fillMaxWidth().height(CHART_HEIGHT_DP.dp)) {
+    Column(modifier.fillMaxWidth()) {
+        HeatmapPlot(data)
+        Box(Modifier.height(Spacing.sm))
+        HeatmapLegend(data)
+    }
+}
+
+/**
+ * Legenda de escala. O heatmap codifica valor em opacidade, e opacidade sem referência não
+ * é lida como número — o usuário via manchas mais claras e mais escuras sem saber o que
+ * separava uma da outra.
+ *
+ * Os degraus repetem o piso de 0.22 do desenho: o dia mais fraco precisa continuar visível
+ * como "houve dado".
+ */
+@Composable
+private fun HeatmapLegend(data: ChartData) {
+    val id = data.config.id
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        AxisLabel(data.from.format(AXIS_DATE), "axisFrom_$id")
+
+        Box(Modifier.weight(1f))
+
+        AxisLabel("menos", "legendLess_$id")
+        listOf(0.22f, 0.42f, 0.61f, 0.81f, 1f).forEach { alpha ->
+            Box(
+                Modifier
+                    .size(LEGEND_SWATCH_DP.dp)
+                    .background(FastinColors.accent.copy(alpha = alpha), FastinShapes.small),
+            )
+        }
+        AxisLabel("mais", "legendMore_$id")
+
+        Box(Modifier.weight(1f))
+
+        AxisLabel(data.to.format(AXIS_DATE), "axisTo_$id")
+    }
+}
+
+@Composable
+private fun HeatmapPlot(data: ChartData) {
+    Canvas(Modifier.fillMaxWidth().height(CHART_HEIGHT_DP.dp)) {
         val byDate = data.points.associateBy { it.date }
         val start = data.from.minusDays((data.from.dayOfWeek.value - 1).toLong())
         val weeks = (ChronoUnit.DAYS.between(start, data.to) / 7).toInt() + 1
