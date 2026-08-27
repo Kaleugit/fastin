@@ -22,6 +22,7 @@ import dev.kaleu.fastin.domain.model.FastingLog
 import dev.kaleu.fastin.domain.model.Quality
 import dev.kaleu.fastin.domain.model.Tristate
 import dev.kaleu.fastin.ui.entry.DayEntryScreen
+import dev.kaleu.fastin.ui.entry.DayEntryUiState
 import dev.kaleu.fastin.ui.entry.DayEntryViewModel
 import dev.kaleu.fastin.ui.theme.FastinTheme
 import kotlinx.coroutines.runBlocking
@@ -57,6 +58,10 @@ class DayEntryScreenTest {
     private lateinit var db: FastinDatabase
     private lateinit var repo: FastingLogRepository
 
+    /** Capturados para os testes de saída: quem saiu, e por qual caminho. */
+    private var vm: DayEntryViewModel? = null
+    private var backCount = 0
+
     @Before fun setUp() {
         val ctx: Context = ApplicationProvider.getApplicationContext()
         db = Room.inMemoryDatabaseBuilder(ctx, FastinDatabase::class.java)
@@ -76,7 +81,7 @@ class DayEntryScreenTest {
 
     private fun setContent() {
         compose.setContent {
-            val vm = remember { DayEntryViewModel(repo, date) }
+            val vm = remember { DayEntryViewModel(repo, date).also { this.vm = it } }
             val state by vm.uiState.collectAsStateWithLifecycle()
             FastinTheme {
                 DayEntryScreen(
@@ -90,7 +95,7 @@ class DayEntryScreenTest {
                     onWeightText = vm::setWeightText,
                     onNotes = vm::setNotes,
                     onSave = { vm.save() },
-                    onBack = {},
+                    onBack = { backCount++ },
                 )
             }
         }
@@ -256,5 +261,120 @@ class DayEntryScreenTest {
         assertNotNull(log)
         assertEquals(LocalTime.of(12, 30), log!!.firstMealTime)
         assertNull("a última refeição não pode ter recebido o valor da primeira", log.lastMealTime)
+    }
+
+    // --- Alterações não salvas ao sair ---------------------------------------------------
+
+    /**
+     * Metade positiva: o horário informado e não salvo era perda silenciosa — `onBack` fazia
+     * `popBackStack()` direto e nada comparava o formulário com o banco.
+     */
+    @Test
+    fun `sair com horario alterado pede confirmacao`() {
+        setContent()
+
+        vm!!.setFirstMealTime(LocalTime.of(11, 30))
+        flush()
+        tap("back")
+
+        compose.onNodeWithTag("unsavedPrompt").assertExists()
+        assertEquals("não pode ter saído da tela com o aviso aberto", 0, backCount)
+    }
+
+    /**
+     * Metade negativa. Sem ela, um `hasUnsavedChanges` preso em `true` passaria no teste
+     * acima e transformaria toda saída — inclusive de um dia que o usuário só abriu para
+     * olhar — num aviso que ele aprenderia a dispensar sem ler.
+     */
+    @Test
+    fun `sair sem ter mexido em nada nao pede nada`() {
+        setContent()
+        tap("back")
+
+        assertTrue(
+            "não deveria haver aviso",
+            compose.onAllNodesWithTag("unsavedPrompt").fetchSemanticsNodes().isEmpty(),
+        )
+        assertEquals(1, backCount)
+    }
+
+    /** "Sair sem salvar" precisa mesmo não salvar — senão a opção é uma mentira. */
+    @Test
+    fun `sair sem salvar nao grava nada`() {
+        runBlocking { repo.save(FastingLog(date = date, firstMealTime = LocalTime.of(9, 0))) }
+        setContent()
+
+        vm!!.setFirstMealTime(LocalTime.of(11, 30))
+        flush()
+        tap("back")
+        compose.onNodeWithTag("discardAndLeave").assertIsDisplayed().performClick()
+        flush()
+
+        // O banco continua com o valor antigo, não com o que estava na tela.
+        assertEquals(LocalTime.of(9, 0), stored()?.firstMealTime)
+        assertEquals(1, backCount)
+    }
+
+    @Test
+    fun `salvar e sair grava o que estava na tela`() {
+        setContent()
+
+        vm!!.setFirstMealTime(LocalTime.of(11, 30))
+        flush()
+        tap("back")
+        compose.onNodeWithTag("saveAndLeave").assertIsDisplayed().performClick()
+        flush()
+
+        assertEquals(LocalTime.of(11, 30), stored()?.firstMealTime)
+    }
+
+    @Test
+    fun `continuar editando fecha o aviso e mantem o valor`() {
+        setContent()
+
+        vm!!.setFirstMealTime(LocalTime.of(11, 30))
+        flush()
+        tap("back")
+        compose.onNodeWithTag("cancelExit").assertIsDisplayed().performClick()
+        flush()
+
+        assertTrue(
+            "o aviso deveria ter fechado",
+            compose.onAllNodesWithTag("unsavedPrompt").fetchSemanticsNodes().isEmpty(),
+        )
+        assertEquals(0, backCount)
+        assertEquals(LocalTime.of(11, 30), vm!!.uiState.value.firstMealTime)
+    }
+
+    /** Salvar zera o estado sujo: o aviso não pode perseguir quem acabou de salvar. */
+    @Test
+    fun `depois de salvar sair nao pede mais nada`() {
+        setContent()
+
+        vm!!.setFirstMealTime(LocalTime.of(11, 30))
+        flush()
+        save()
+        tap("back")
+
+        assertTrue(
+            "não deveria haver aviso depois de salvar",
+            compose.onAllNodesWithTag("unsavedPrompt").fetchSemanticsNodes().isEmpty(),
+        )
+        assertEquals(1, backCount)
+    }
+
+    /**
+     * Estado puro, sem tela. Durante a carga o formulário está em branco por definição:
+     * tratar isso como escolha do usuário é a mesma classe de erro que apagou dados na
+     * v1.0.2.
+     */
+    @Test
+    fun `nao ha alteracao pendente enquanto carrega`() {
+        val carregando = DayEntryUiState(date = date, firstMealTime = LocalTime.of(11, 30))
+        assertTrue(carregando.isLoading)
+        assertTrue("carregando não pode acusar alteração", !carregando.hasUnsavedChanges)
+
+        val carregado = carregando.copy(isLoading = false)
+        assertTrue("carregado com valor novo acusa alteração", carregado.hasUnsavedChanges)
     }
 }

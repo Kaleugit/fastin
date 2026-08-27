@@ -35,6 +35,11 @@ data class DayEntryUiState(
     val notes: String = "",
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
+    /**
+     * O que está gravado no banco para este dia, ou `null` quando não há linha nenhuma.
+     * Baseline da comparação de [hasUnsavedChanges] — não é o estado do formulário.
+     */
+    val savedLog: FastingLog? = null,
 ) {
     /** Peso normalizado. Vírgula do teclado pt-BR vira ponto; lixo vira null, não zero. */
     val weight: Double?
@@ -43,6 +48,20 @@ data class DayEntryUiState(
     /** O texto digitado não converte para número — o campo está preenchido mas inválido. */
     val hasInvalidWeight: Boolean
         get() = weightText.isNotBlank() && weight == null
+
+    /**
+     * Há algo que sair da tela perderia?
+     *
+     * A comparação é contra **o que seria gravado** ([toLog]), não campo a campo do
+     * formulário: "82," e "82" produzem o mesmo peso, e alertar sobre uma vírgula em trânsito
+     * treinaria o usuário a ignorar o aviso.
+     *
+     * Sempre `false` durante a carga. Acusar alteração sobre um formulário que ainda não
+     * carregou é a mesma classe de erro que apagou dados na v1.0.2: tratar o estado em
+     * branco como se fosse escolha do usuário.
+     */
+    val hasUnsavedChanges: Boolean
+        get() = !isLoading && toLog() != (savedLog ?: FastingLog(date = date))
 
     fun toLog(): FastingLog = FastingLog(
         date = date,
@@ -74,9 +93,10 @@ class DayEntryViewModel(
             // respondia. Aqui o valor do banco só preenche campo que o usuário deixou vazio.
             _uiState.update { current ->
                 if (existing == null) {
-                    current.copy(isLoading = false)
+                    current.copy(isLoading = false, savedLog = null)
                 } else {
                     current.copy(
+                        savedLog = existing,
                         lastMealTime = current.lastMealTime ?: existing.lastMealTime,
                         firstMealTime = current.firstMealTime ?: existing.firstMealTime,
                         caloricDeficit = current.caloricDeficit ?: existing.caloricDeficit,
@@ -115,8 +135,11 @@ class DayEntryViewModel(
     fun save(onDone: () -> Unit = {}) {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            repository.save(_uiState.value.toLog())
-            _uiState.update { it.copy(isSaved = true) }
+            val saved = _uiState.value.toLog()
+            repository.save(saved)
+            // O baseline passa a ser o que acabou de ser gravado: salvar zera o estado sujo,
+            // senão o aviso de "alterações não salvas" perseguiria o usuário depois de salvar.
+            _uiState.update { it.copy(isSaved = true, savedLog = saved) }
             onDone()
         }
     }

@@ -18,6 +18,12 @@ object FastinColors {
     val surfaceRaised = Color(0xFF22262C)
 
     val hairline = Color(0x0FFFFFFF) // white @ 6%
+
+    /**
+     * Véu por trás de uma sobreposição modal. Escurece o fundo o bastante para o card à
+     * frente ganhar foco sem apagar o contexto do que está atrás.
+     */
+    val scrim = Color(0xB3070809) // near-black @ 70%
     val shadowDark = Color(0x8C07080A) // @ 55%
     val shadowLight = Color(0x0AFFFFFF) // white @ 4%
 
