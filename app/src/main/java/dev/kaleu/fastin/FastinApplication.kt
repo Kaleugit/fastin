@@ -6,6 +6,7 @@ import dev.kaleu.fastin.notify.MilestoneNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -75,12 +76,16 @@ class FastinApplication : Application() {
             return
         }
         rescheduleJob = scope.launch {
-            // Reagenda a partir do jejum que estiver correndo agora. Sem jejum em
-            // andamento, reschedule() apenas limpa o que houver pendente.
-            container.fastingLogRepository.observeAllByDate().collect { logs ->
+            // Reagenda a partir do jejum que estiver correndo agora **e** dos marcos
+            // escolhidos em Ajustes: mudar qualquer um dos dois reagenda na hora. Sem jejum
+            // em andamento, reschedule() apenas limpa o que houver pendente.
+            combine(
+                container.fastingLogRepository.observeAllByDate(),
+                container.notificationPrefsStore.milestoneHours,
+            ) { logs, hours -> logs to hours }.collect { (logs, hours) ->
                 val now = container.clock.instant()
                 val window = FastingCalculator.currentWindow(logs, now, container.clock.zone)
-                MilestoneNotifier.reschedule(this@FastinApplication, window?.start, now)
+                MilestoneNotifier.reschedule(this@FastinApplication, window?.start, now, hours)
             }
         }
     }

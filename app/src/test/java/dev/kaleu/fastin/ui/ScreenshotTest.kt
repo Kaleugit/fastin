@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -333,6 +334,7 @@ class ScreenshotTest {
                 onExport = {},
                 onPickImport = {},
                 onToggleNotifications = {},
+                onToggleMilestoneHour = {},
             )
         }
         capture("05-ajustes")
@@ -366,6 +368,24 @@ class ScreenshotTest {
         await("estado vazio") { tagExists("clockEmpty") }
         capture("06-relogio-vazio")
         emptyDb.close()
+    }
+
+    /**
+     * A barra inferior não aparece em nenhuma tela isolada acima. Este é o único lugar onde
+     * dá para olhar o ícone de engrenagem desenhado à mão (EP-002).
+     */
+    @Test
+    fun `07 barra de abas`() {
+        screen {
+            val pagerState = androidx.compose.foundation.pager.rememberPagerState { HomeTab.entries.size }
+            HomeTabs(pagerState = pagerState) { tab ->
+                Box(Modifier.fillMaxSize().background(FastinColors.surfaceBase).testTag("page_${tab.route}"))
+            }
+        }
+        await("barra montada") { tagExists("tab_settings") }
+        compose.onNodeWithTag("tab_settings").performClick()
+        await("ajustes selecionado") { tagExists("page_settings") }
+        capture("07-barra-de-abas")
     }
 
     // ---------------------------------------------------------------- helpers

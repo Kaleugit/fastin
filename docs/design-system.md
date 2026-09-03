@@ -66,7 +66,7 @@ separa "feito com cuidado" de "feito rápido".
 
 | Estilo | Família | Tam. | Peso | Tracking |
 |---|---|---|---|---|
-| `clock` | Outfit | 56sp | 200 ExtraLight | -2sp |
+| `clock` | Outfit | 40sp | 200 ExtraLight | -1.5sp |
 | `displayLarge` | Outfit | 40sp | 300 Light | -1.5sp |
 | `displayMedium` | Outfit | 28sp | 300 Light | -0.5sp |
 | `title` | Outfit | 20sp | 400 Regular | 0 |
@@ -179,9 +179,12 @@ computador. Curvas do sistema, em `FastinMotion`:
 ## 7. Ícones
 
 Material Icons de traço grosso são proibidos. Os poucos ícones necessários (seta esquerda,
-seta direita, mais, reticências, download) são `ImageVector` desenhados à mão em
-`ui/theme/FastinIcons.kt`, com traço de **1.5dp**, cap arredondado, sem preenchimento —
-o traço fino e preciso das refs.
+seta direita, fechar, check, mais, reticências, relógio, gráfico, calendário e engrenagem)
+são `ImageVector` desenhados à mão em `ui/theme/FastinIcons.kt`, com traço de **1.5dp**,
+cap arredondado, sem preenchimento — o traço fino e preciso das refs.
+
+A barra inferior usa calendário, gráfico e **engrenagem** (Ajustes). O relógio existe para
+outros usos; um relógio na aba de ajustes lia como "horários", não como "configuração".
 
 ---
 

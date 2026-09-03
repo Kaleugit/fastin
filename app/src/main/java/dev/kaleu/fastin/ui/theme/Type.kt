@@ -47,12 +47,16 @@ private const val TABULAR = "tnum"
 
 object FastinType {
 
-    /** Relógio de jejum. O maior elemento da tela inicial. */
+    /**
+     * Relógio de jejum. Ainda o maior número da tela inicial, mas encolhido de 56sp para
+     * 40sp na v1.3 (EP-002): o card precisava perder metade da altura para o calendário
+     * caber inteiro sem rolar, e o anel de 140dp não comporta 56sp.
+     */
     val clock = TextStyle(
         fontFamily = Outfit,
         fontWeight = FontWeight(200),
-        fontSize = 56.sp,
-        lineHeight = 60.sp,
+        fontSize = 40.sp,
+        lineHeight = 44.sp,
         letterSpacing = (-0.036).em,
         fontFeatureSettings = TABULAR,
     )

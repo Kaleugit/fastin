@@ -19,9 +19,11 @@ import androidx.test.core.app.ApplicationProvider
 import dev.kaleu.fastin.data.db.FastinDatabase
 import dev.kaleu.fastin.data.repo.FastingLogRepository
 import dev.kaleu.fastin.domain.model.FastingLog
+import dev.kaleu.fastin.domain.model.MilestoneHours
 import dev.kaleu.fastin.ui.clock.FastingClockCard
 import dev.kaleu.fastin.ui.clock.FastingClockViewModel
 import dev.kaleu.fastin.ui.theme.FastinTheme
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -80,12 +82,14 @@ class FastingClockTest {
 
     private fun seed(vararg logs: FastingLog) = runBlocking { logs.forEach { repo.save(it) } }
 
-    private fun setContent(clock: Clock) {
+    private fun setContent(clock: Clock, hours: List<Int> = MilestoneHours.DEFAULT) {
         compose.setContent {
             val vm = remember {
                 ViewModelProvider(
                     store,
-                    viewModelFactory { initializer { FastingClockViewModel(repo, clock) } },
+                    viewModelFactory {
+                        initializer { FastingClockViewModel(repo, clock, flowOf(hours)) }
+                    },
                 )[FastingClockViewModel::class.java]
             }
             val state by vm.uiState.collectAsStateWithLifecycle()
@@ -260,12 +264,44 @@ class FastingClockTest {
             .assertContentDescriptionContains("14 horas e 1 minutos", substring = true)
     }
 
-    /** Jejum "esquecido" há mais de 48h é dado velho, não jejum de 5 dias em andamento. */
+    /** Jejum "esquecido" há mais de 100h é dado velho, não jejum de 9 dias em andamento. */
     @Test
-    fun `jejum abandonado ha mais de 48h nao aparece como em andamento`() {
+    fun `jejum abandonado ha mais de 100h nao aparece como em andamento`() {
         seed(FastingLog(date = LocalDate.parse("2026-03-01"), lastMealTime = LocalTime.parse("20:00")))
         setContent(clockAt("2026-03-10", 10, 0))
 
         compose.onNodeWithTag("clockEmpty").assertExists()
+    }
+
+    // --- Marcos escolhidos em Ajustes (EP-002) ---------------------------------------------
+
+    /**
+     * Os marcos do relógio são os que o usuário escolheu, não uma lista fixa. Par
+     * positivo/negativo: com [12, 48] aparecem 12h e 48h — e o 16h do default **não**.
+     * Às 10:00 do dia seguinte a um jantar de 20:00 são 14h: 12h batido, 48h pendente.
+     */
+    @Test
+    fun `marcos seguem a escolha do usuario e nao o default`() {
+        seed(FastingLog(date = LocalDate.parse("2026-03-09"), lastMealTime = LocalTime.parse("20:00")))
+        setContent(clockAt("2026-03-10", 10, 0), hours = listOf(12, 48))
+        awaitRunningClock()
+
+        compose.onNodeWithTag("milestone_12", useUnmergedTree = true)
+            .assertContentDescriptionContains("batido", substring = true)
+        compose.onNodeWithTag("milestone_48", useUnmergedTree = true)
+            .assertContentDescriptionContains("pendente", substring = true)
+        compose.onNodeWithTag("milestone_16", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("milestonesEmpty").assertDoesNotExist()
+    }
+
+    /** Sem marco nenhum o card avisa onde escolher, em vez de deixar um vazio ao lado do anel. */
+    @Test
+    fun `sem marco escolhido o relogio avisa em vez de sumir`() {
+        seed(FastingLog(date = LocalDate.parse("2026-03-09"), lastMealTime = LocalTime.parse("20:00")))
+        setContent(clockAt("2026-03-10", 10, 0), hours = emptyList())
+        awaitRunningClock()
+
+        compose.onNodeWithTag("milestonesEmpty").assertExists()
+        compose.onNodeWithTag("milestone_16", useUnmergedTree = true).assertDoesNotExist()
     }
 }

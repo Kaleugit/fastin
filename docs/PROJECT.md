@@ -37,7 +37,7 @@ Enums: `Tristate = YES | MAYBE | NO` · `Quality = GOOD | AVERAGE | BAD` · `Yes
 - Se `lastMealTime(D-1)` é nulo → não há jejum calculável para D.
 - Se `firstMealTime(D)` é nulo → o jejum de D está **em andamento** (duração = agora − início).
 - Duração = `Duration.between(D-1 @ lastMealTime, D @ firstMealTime)`. Atravessa a meia-noite
-  por construção; se der negativo ou > 48h, trate como dado inválido e não exiba.
+  por construção; se der negativo ou > 100h (era 48h até a v1.2; subiu para o marco de 48h ser alcançável — DA-016), trate como dado inválido e não exiba.
 
 ## 3. Telas
 
@@ -46,6 +46,8 @@ Enums: `Tristate = YES | MAYBE | NO` · `Quality = GOOD | AVERAGE | BAD` · `Yes
 - Indicador leve (ponto) no dia que já tem qualquer dado registrado.
 - Tocar num dia abre o formulário daquele dia.
 - Card fixo do relógio de jejum no topo (§3.3).
+- As três abas (Calendário, Dashboard, Ajustes) trocam por toque na barra inferior **ou por
+  swipe horizontal** (v1.3, EP-002). O ícone de Ajustes é uma engrenagem.
 
 ### 3.2 Formulário do dia
 - Todos os campos de §2, todos opcionais.
@@ -57,8 +59,11 @@ Enums: `Tristate = YES | MAYBE | NO` · `Quality = GOOD | AVERAGE | BAD` · `Yes
 - Card sempre visível no topo da tela inicial.
 - A partir do último `lastMealTime` registrado, mostra horas:minutos de jejum decorrido,
   **atualizando sozinho** (tick a cada segundo, sem recarregar tela).
-- Marcos **16h, 18h, 20h, 24h**: exibe o horário previsto de cada um e marca visualmente
-  os já batidos.
+- Marcos **escolhidos pelo usuário em Ajustes** (default 16h, 18h, 20h, 24h; opções de 12h a
+  48h): exibe o horário previsto de cada um e marca visualmente os já batidos. A lista é a
+  **mesma** que gera as notificações (§4.5) — v1.3, EP-002.
+- Card compacto: anel de progresso à esquerda, marcos em lista à direita, para o calendário
+  do mês caber inteiro na tela sem rolar (v1.3).
 - Estado vazio: "nenhum jejum em andamento — registre sua última refeição".
 
 ### 3.4 Dashboard / KPIs customizáveis
@@ -79,8 +84,9 @@ Usuário **adiciona, remove e configura** cards de gráfico. Cada card tem:
    backup existente (sideload, sem nuvem); crítico ao trocar de aparelho.
 3. **`notes`** livre por dia (já em §2).
 4. **Modo escuro seguindo o tema do sistema.** Ver ADR sobre isso em `docs/decisions.md`.
-5. **Notificação local opcional** ao bater 16h/18h/20h de jejum. `WorkManager`/`AlarmManager`,
-   sem internet, sem Play Services.
+5. **Notificação local opcional** ao bater cada marco escolhido em Ajustes (§3.3; default
+   16h/18h/20h/24h, opções de 12h a 48h). `WorkManager`/`AlarmManager`, sem internet, sem
+   Play Services.
 
 ## 5. Ordem de entrega (prioridade do usuário)
 

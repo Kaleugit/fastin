@@ -144,10 +144,29 @@ class FastingCalculatorTest {
     }
 
     @Test
-    fun `currentWindow ignora jejum abandonado ha mais de 48h`() {
+    fun `currentWindow ignora jejum abandonado ha mais de 100h`() {
         val logs = listOf(log("2026-03-01", last = "20:00")).associateBy { it.date }
         val now = LocalDate.parse("2026-03-10").atTime(10, 0).atZone(zone).toInstant()
         assertNull(FastingCalculator.currentWindow(logs, now, zone))
+    }
+
+    /**
+     * Par do teste acima, e a razão de o limite ter subido de 48h para 100h (DA-016): o
+     * maior marco escolhível é 48h, e com limite igual a ele o jejum sumia da tela no
+     * exato instante em que o marco chegava. Aos 49h ainda é jejum em andamento, com 48h
+     * batido; aos 101h já não é.
+     */
+    @Test
+    fun `jejum de 49h continua em andamento e o marco de 48h acende`() {
+        val logs = listOf(log("2026-03-09", last = "20:00")).associateBy { it.date }
+        val at49h = LocalDate.parse("2026-03-11").atTime(21, 0).atZone(zone).toInstant()
+
+        val w = FastingCalculator.currentWindow(logs, at49h, zone)!!
+        val m48 = FastingCalculator.milestones(w, at49h, hours = listOf(48)).single()
+        assertTrue("48h precisa contar como batido aos 49h", m48.isReached)
+
+        val at101h = at49h.plus(Duration.ofHours(52))
+        assertNull(FastingCalculator.currentWindow(logs, at101h, zone))
     }
 
     @Test

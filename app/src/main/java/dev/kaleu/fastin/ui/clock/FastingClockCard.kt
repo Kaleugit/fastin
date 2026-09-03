@@ -7,10 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,22 +33,27 @@ import dev.kaleu.fastin.ui.components.FastinCard
 import dev.kaleu.fastin.ui.theme.Eyebrow
 import dev.kaleu.fastin.ui.theme.FastinColors
 import dev.kaleu.fastin.ui.theme.FastinMotion
-import dev.kaleu.fastin.ui.theme.FastinShapes
 import dev.kaleu.fastin.ui.theme.FastinType
 import dev.kaleu.fastin.ui.theme.Spacing
 import dev.kaleu.fastin.ui.theme.accentGlow
-import java.time.Duration
-import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.ceil
 import androidx.compose.ui.semantics.testTag as semanticsTestTag
 
 private val PT_BR = Locale.forLanguageTag("pt-BR")
 private val HOUR_FORMAT = DateTimeFormatter.ofPattern("HH:mm", PT_BR)
 
+/** A partir de quantos marcos a lista se divide em duas colunas para não esticar o card. */
+private const val SINGLE_COLUMN_MAX = 5
+
 /**
  * Card fixo do topo da tela inicial (PROJECT.md §3.3).
+ *
+ * Na v1.3 (EP-002) o card ficou com **metade da altura**: o anel encolheu e foi para a
+ * esquerda, os marcos viraram uma lista à direita. O motivo é o calendário — com o card de
+ * 386dp de antes ele nunca cabia inteiro na tela sem rolar.
  *
  * O número **não é animado** de propósito (design-system.md §6): ele muda a cada segundo e
  * interpolar seria ruído. Anima só o anel de progresso.
@@ -92,39 +98,46 @@ private fun RunningClock(state: FastingClockUiState, zone: ZoneId) {
     val minutes = state.elapsed.toMinutes() % 60
     val seconds = state.elapsed.seconds % 60
 
-    Column(
-        Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Column(Modifier.fillMaxWidth()) {
         Eyebrow("Jejum em andamento", modifier = Modifier.fillMaxWidth())
-        androidx.compose.foundation.layout.Spacer(Modifier.height(Spacing.xl))
+        Spacer(Modifier.height(Spacing.md))
 
-        Box(contentAlignment = Alignment.Center) {
-            ProgressRing(progress = state.progressTo24h)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "%d:%02d".format(hours, minutes),
-                    style = FastinType.clock,
-                    color = FastinColors.textPrimary,
-                    modifier = Modifier
-                        // Sem isso o leitor de tela anunciaria o número inteiro a cada
-                        // segundo, tornando o app inutilizável com TalkBack.
-                        .clearAndSetSemantics {
-                            semanticsTestTag = "clockValue"
-                            contentDescription = "$hours horas e $minutes minutos de jejum"
-                        },
-                )
-                Text(
-                    text = "%02ds".format(seconds),
-                    style = FastinType.label,
-                    color = FastinColors.textMuted,
-                    modifier = Modifier.clearAndSetSemantics { semanticsTestTag = "clockSeconds" },
-                )
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                ProgressRing(progress = state.progressTo24h)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "%d:%02d".format(hours, minutes),
+                        style = FastinType.clock,
+                        color = FastinColors.textPrimary,
+                        modifier = Modifier
+                            // Sem isso o leitor de tela anunciaria o número inteiro a cada
+                            // segundo, tornando o app inutilizável com TalkBack.
+                            .clearAndSetSemantics {
+                                semanticsTestTag = "clockValue"
+                                contentDescription = "$hours horas e $minutes minutos de jejum"
+                            },
+                    )
+                    Text(
+                        text = "%02ds".format(seconds),
+                        style = FastinType.label,
+                        color = FastinColors.textMuted,
+                        modifier = Modifier.clearAndSetSemantics { semanticsTestTag = "clockSeconds" },
+                    )
+                }
             }
-        }
 
-        androidx.compose.foundation.layout.Spacer(Modifier.height(Spacing.xl))
-        MilestoneRow(milestones = state.milestones, zone = zone)
+            Spacer(Modifier.width(Spacing.lg))
+
+            MilestoneList(
+                milestones = state.milestones,
+                zone = zone,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -140,8 +153,8 @@ private fun ProgressRing(progress: Float) {
         label = "ringProgress",
     )
 
-    Canvas(Modifier.size(220.dp)) {
-        val stroke = 10.dp.toPx()
+    Canvas(Modifier.size(140.dp)) {
+        val stroke = 8.dp.toPx()
         val inset = stroke / 2f
         val arcSize = Size(size.width - stroke, size.height - stroke)
 
@@ -174,28 +187,49 @@ private fun ProgressRing(progress: Float) {
     }
 }
 
-/** Marcos de 16/18/20/24h com o horário previsto e indicação de batido (spec §3.3). */
+/**
+ * Marcos escolhidos em Ajustes, com o horário previsto e indicação de batido (spec §3.3).
+ *
+ * Lista vertical, não linha: cabe ao lado do anel e aceita de 0 a 9 marcos sem espremer o
+ * horário. Acima de [SINGLE_COLUMN_MAX] divide em duas colunas para a lista não passar da
+ * altura do anel.
+ */
 @Composable
-private fun MilestoneRow(milestones: List<Milestone>, zone: ZoneId) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        milestones.forEach { milestone ->
-            MilestonePill(milestone = milestone, zone = zone, modifier = Modifier.weight(1f))
+private fun MilestoneList(
+    milestones: List<Milestone>,
+    zone: ZoneId,
+    modifier: Modifier = Modifier,
+) {
+    if (milestones.isEmpty()) {
+        Text(
+            text = "nenhum marco escolhido — ajuste em Ajustes",
+            style = FastinType.label,
+            color = FastinColors.textMuted,
+            modifier = modifier.testTag("milestonesEmpty"),
+        )
+        return
+    }
+
+    val columns = if (milestones.size > SINGLE_COLUMN_MAX) 2 else 1
+    val perColumn = ceil(milestones.size / columns.toFloat()).toInt()
+
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        milestones.chunked(perColumn).forEach { column ->
+            Column(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                column.forEach { MilestoneRow(milestone = it, zone = zone) }
+            }
         }
     }
 }
 
 @Composable
-private fun MilestonePill(
-    milestone: Milestone,
-    zone: ZoneId,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .padding(horizontal = Spacing.xs)
+private fun MilestoneRow(milestone: Milestone, zone: ZoneId) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
             .clearAndSetSemantics {
                 semanticsTestTag = "milestone_${milestone.hours}"
                 contentDescription = buildString {
@@ -203,12 +237,11 @@ private fun MilestonePill(
                     append(if (milestone.isReached) ", batido" else ", pendente")
                 }
             },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(6.dp)
                 .then(
                     if (milestone.isReached) {
                         Modifier
@@ -219,10 +252,12 @@ private fun MilestonePill(
                     },
                 ),
         )
+        Spacer(Modifier.width(Spacing.sm))
         Text(
             text = "${milestone.hours}h",
             style = FastinType.label,
             color = if (milestone.isReached) FastinColors.textPrimary else FastinColors.textMuted,
+            modifier = Modifier.weight(1f),
         )
         Text(
             text = milestone.reachedAt.atZone(zone).format(HOUR_FORMAT),

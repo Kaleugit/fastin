@@ -3,6 +3,7 @@ package dev.kaleu.fastin.domain.fasting
 import dev.kaleu.fastin.domain.model.FastingLog
 import dev.kaleu.fastin.domain.model.FastingWindow
 import dev.kaleu.fastin.domain.model.Milestone
+import dev.kaleu.fastin.domain.model.MilestoneHours
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -18,10 +19,14 @@ import java.time.ZoneId
  */
 object FastingCalculator {
 
-    val MILESTONE_HOURS = listOf(16, 18, 20, 24)
-
-    /** Acima disso o par de horários é incoerente (esquecimento de registro), não um jejum. */
-    val MAX_PLAUSIBLE = Duration.ofHours(48)
+    /**
+     * Acima disso o par de horários é incoerente (esquecimento de registro), não um jejum.
+     *
+     * Era 48h. Subiu para 100h na v1.3 por decisão do usuário (EPICOS.md, DA-016): o maior
+     * marco escolhível é 48h e, com o limite igual a ele, o jejum virava "abandonado" no
+     * exato instante em que o marco chegava — o relógio esvaziava e o aviso nunca saía.
+     */
+    val MAX_PLAUSIBLE: Duration = Duration.ofHours(100)
 
     /**
      * Monta a janela de jejum atribuída a [day].
@@ -62,12 +67,17 @@ object FastingCalculator {
     }
 
     /**
-     * Marcos de 16h/18h/20h/24h com o instante previsto e se já foram batidos em [now].
-     * Para janela fechada, "batido" é medido contra o fim real — não contra o relógio.
+     * Marcos escolhidos pelo usuário ([MilestoneHours]) com o instante previsto e se já foram
+     * batidos em [now]. Para janela fechada, "batido" é medido contra o fim real — não contra
+     * o relógio.
      */
-    fun milestones(window: FastingWindow, now: Instant): List<Milestone> {
+    fun milestones(
+        window: FastingWindow,
+        now: Instant,
+        hours: List<Int> = MilestoneHours.DEFAULT,
+    ): List<Milestone> {
         val reference = window.end ?: now
-        return MILESTONE_HOURS.map { h ->
+        return hours.map { h ->
             val at = window.start.plus(Duration.ofHours(h.toLong()))
             Milestone(hours = h, reachedAt = at, isReached = !reference.isBefore(at))
         }

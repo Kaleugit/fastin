@@ -110,6 +110,35 @@ object FastinIcons {
         }
     }
 
+    /**
+     * Engrenagem da aba Ajustes (EP-002). Miolo + coroa + oito dentes radiais: com o traço de
+     * 1.5dp e cap arredondado os dentes ficam curtos e finos, sem o preenchimento sólido do
+     * ícone Material.
+     */
+    val Gear: ImageVector by lazy {
+        icon("Gear") {
+            stroke {
+                // Miolo (r = 2)
+                moveTo(12f, 10f)
+                arcToRelative(2f, 2f, 0f, true, true, -0.01f, 0f)
+                close()
+                // Coroa (r = 6)
+                moveTo(12f, 6f)
+                arcToRelative(6f, 6f, 0f, true, true, -0.01f, 0f)
+                close()
+                // Dentes: da coroa (r = 6) até r = 8.5, a cada 45°
+                moveTo(12f, 6f); lineTo(12f, 3.5f)
+                moveTo(12f, 18f); lineTo(12f, 20.5f)
+                moveTo(6f, 12f); lineTo(3.5f, 12f)
+                moveTo(18f, 12f); lineTo(20.5f, 12f)
+                moveTo(7.76f, 7.76f); lineTo(5.99f, 5.99f)
+                moveTo(16.24f, 16.24f); lineTo(18.01f, 18.01f)
+                moveTo(16.24f, 7.76f); lineTo(18.01f, 5.99f)
+                moveTo(7.76f, 16.24f); lineTo(5.99f, 18.01f)
+            }
+        }
+    }
+
     val Calendar: ImageVector by lazy {
         icon("Calendar") {
             stroke {

@@ -18,13 +18,15 @@ import androidx.work.workDataOf
 import dev.kaleu.fastin.FastinApplication
 import dev.kaleu.fastin.R
 import dev.kaleu.fastin.domain.fasting.FastingCalculator
+import dev.kaleu.fastin.domain.model.MilestoneHours
 import kotlinx.coroutines.flow.first
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
- * Notificação local ao bater 16h/18h/20h de jejum (PROJECT.md §4.5).
+ * Notificação local ao bater os marcos de jejum escolhidos pelo usuário (PROJECT.md §4.5,
+ * EP-002). A lista de horas é a **mesma** que o relógio mostra — [MilestoneHours].
  *
  * `WorkManager`, não `AlarmManager`: sobrevive a reboot sem `BOOT_COMPLETED` próprio e não
  * precisa de `SCHEDULE_EXACT_ALARM` (que no Android 13+ exige concessão do usuário). Um
@@ -38,9 +40,6 @@ object MilestoneNotifier {
     const val CHANNEL_ID = "fasting_milestones"
     private const val WORK_PREFIX = "milestone-"
 
-    /** A spec pede 16/18/20; 24h fica só como marco visual no relógio. */
-    val NOTIFIED_HOURS = listOf(16, 18, 20)
-
     /** Canal sempre existe: `minSdk` 26 já é o Android 8, onde canais são obrigatórios. */
     fun ensureChannel(context: Context) {
         val channel = NotificationChannel(
@@ -48,7 +47,7 @@ object MilestoneNotifier {
             "Marcos de jejum",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Avisa quando o jejum atinge 16h, 18h e 20h"
+            description = "Avisa quando o jejum atinge os marcos escolhidos em Ajustes"
             setShowBadge(false)
         }
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
@@ -63,29 +62,38 @@ object MilestoneNotifier {
      * errada), e é a parte que dá para testar sem infraestrutura.
      *
      * @param start início da janela de jejum, ou null se não há jejum em andamento.
+     * @param hours marcos escolhidos pelo usuário, em horas.
      * @return marcos ainda no futuro, em ordem crescente. Vazio se não há o que agendar.
      */
-    fun pendingMilestones(start: Instant?, now: Instant): List<Pending> {
+    fun pendingMilestones(
+        start: Instant?,
+        now: Instant,
+        hours: List<Int> = MilestoneHours.DEFAULT,
+    ): List<Pending> {
         if (start == null) return emptyList()
         // Jejum abandonado não deve disparar avisos ao ser reaberto dias depois.
         if (Duration.between(start, now) > FastingCalculator.MAX_PLAUSIBLE) return emptyList()
 
-        return NOTIFIED_HOURS.mapNotNull { hours ->
-            val delay = Duration.between(now, start.plus(Duration.ofHours(hours.toLong())))
+        return hours.sorted().mapNotNull { h ->
+            val delay = Duration.between(now, start.plus(Duration.ofHours(h.toLong())))
             // Marco já batido não vira notificação retroativa.
-            if (delay.isNegative || delay.isZero) null else Pending(hours, delay)
+            if (delay.isNegative || delay.isZero) null else Pending(h, delay)
         }
     }
 
     /**
      * Reagenda todos os marcos a partir da janela em andamento. Chamar sempre que a última
-     * refeição mudar — reagendar é idempotente por causa de [ExistingWorkPolicy.REPLACE].
+     * refeição **ou a lista de marcos** mudar — reagendar é idempotente por causa de
+     * [ExistingWorkPolicy.REPLACE].
+     *
+     * Cancela **todas** as opções, não só as escolhidas: desmarcar 20h precisa matar o worker
+     * de 20h que foi agendado quando ele ainda estava marcado.
      */
-    fun reschedule(context: Context, start: Instant?, now: Instant) {
+    fun reschedule(context: Context, start: Instant?, now: Instant, hours: List<Int>) {
         val wm = WorkManager.getInstance(context)
-        NOTIFIED_HOURS.forEach { wm.cancelUniqueWork("$WORK_PREFIX$it") }
+        MilestoneHours.OPTIONS.forEach { wm.cancelUniqueWork("$WORK_PREFIX$it") }
 
-        pendingMilestones(start, now).forEach { pending ->
+        pendingMilestones(start, now, hours).forEach { pending ->
             wm.enqueueUniqueWork(
                 "$WORK_PREFIX${pending.hours}",
                 ExistingWorkPolicy.REPLACE,
@@ -99,7 +107,7 @@ object MilestoneNotifier {
 
     fun cancelAll(context: Context) {
         val wm = WorkManager.getInstance(context)
-        NOTIFIED_HOURS.forEach { wm.cancelUniqueWork("$WORK_PREFIX$it") }
+        MilestoneHours.OPTIONS.forEach { wm.cancelUniqueWork("$WORK_PREFIX$it") }
     }
 }
 

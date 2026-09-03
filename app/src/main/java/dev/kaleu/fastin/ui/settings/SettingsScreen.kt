@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import dev.kaleu.fastin.domain.model.MilestoneHours
 import dev.kaleu.fastin.ui.components.FastinCard
+import dev.kaleu.fastin.ui.components.ToggleChipGrid
 import dev.kaleu.fastin.ui.components.pressable
 import dev.kaleu.fastin.ui.theme.FastinColors
 import dev.kaleu.fastin.ui.theme.FastinShapes
@@ -26,7 +28,7 @@ import dev.kaleu.fastin.ui.theme.accentGlow
 import dev.kaleu.fastin.ui.theme.sunken
 
 /**
- * Ajustes: backup CSV e notificações (PROJECT.md §4.2 e §4.5).
+ * Ajustes: backup CSV, marcos de jejum e notificações (PROJECT.md §4.2 e §4.5).
  *
  * O texto sobre backup é deliberadamente enfático: é sideload, não existe nuvem, e o
  * usuário precisa entender que trocar de aparelho sem exportar perde o histórico.
@@ -37,6 +39,7 @@ fun SettingsScreen(
     onExport: () -> Unit,
     onPickImport: () -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
+    onToggleMilestoneHour: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -89,9 +92,27 @@ fun SettingsScreen(
             }
         }
 
+        // Os marcos ficam sempre visíveis, mesmo com os avisos desligados: eles também
+        // definem o que o relógio da tela inicial mostra (EP-002).
+        FastinCard(eyebrow = "Marcos de jejum") {
+            Text(
+                text = "Os marcos escolhidos aparecem no relógio de jejum e, com os avisos " +
+                    "ligados, viram notificação. De ${MilestoneHours.MIN}h a ${MilestoneHours.MAX}h.",
+                style = FastinType.body,
+                color = FastinColors.textSecondary,
+            )
+            Box(Modifier.height(Spacing.lg))
+            ToggleChipGrid(
+                options = MilestoneHours.OPTIONS.map { it to "${it}h" },
+                selected = state.milestoneHours,
+                onToggle = onToggleMilestoneHour,
+                testTagPrefix = "hour",
+            )
+        }
+
         FastinCard(eyebrow = "Notificações") {
             Text(
-                text = "Avisar quando o jejum atingir 16h, 18h e 20h. Funciona offline, sem " +
+                text = "Avisar ao atingir cada marco escolhido acima. Funciona offline, sem " +
                     "Play Services.",
                 style = FastinType.body,
                 color = FastinColors.textSecondary,

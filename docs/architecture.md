@@ -53,7 +53,7 @@ fun milestones(window: FastingWindow): List<Milestone>   // 16h, 18h, 20h, 24h
 - `current.firstMealTime == null` → janela **aberta**; duração medida contra `now`.
 - Conversão para instante usa `ZoneId.systemDefault()` **na borda**, não dentro do cálculo,
   para o horário de verão não distorcer a duração.
-- Guarda: duração negativa ou > 48h ⇒ janela inválida, não exibida.
+- Guarda: duração negativa ou > 100h ⇒ janela inválida, não exibida (`MAX_PLAUSIBLE`; era 48h até a v1.2).
 
 O tick do relógio é um `flow { while(true) { emit(clock.instant()); delay(1_000) } }` no
 ViewModel. O composable não tem timer próprio.

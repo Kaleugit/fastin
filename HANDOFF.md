@@ -2,6 +2,15 @@
 
 Escrito ao fim da sessão de construção inicial e **atualizado após o primeiro uso real**.
 
+**Estado em 2026-09-03:** **v1.3 gerada e assinada, ainda não instalada.** Uma semana com a
+v1.2 rendeu quatro pedidos do usuário (calendário inteiro na tela, marcos do relógio ligados
+às notificações, escolha de quais marcos entre 12h e 48h, swipe entre abas, engrenagem em
+Ajustes); viraram o épico EP-002. No fechamento o usuário também subiu o limite de abandono
+do jejum de 48h para 100h (DA-016). 138 testes na JVM, lint limpo, APK em
+`Desktop\fastin-v1.3.apk` (versionCode 5, mesma chave). **Falta o usuário instalar por
+cima** — método em `docs/build-apk.md` §4 — e observar: o swipe no aparelho, o card do
+relógio com o calendário abaixo, e o primeiro aviso de um marco escolhido por ele.
+
 **Estado em 2026-08-27:** **v1.2 instalada no aparelho, dados preservados.** A v1.0.2 rendeu
 cinco relatos do usuário; os cinco viraram o épico EP-001 e estão corrigidos, com 114 testes
 na JVM e lint limpo. O usuário exportou o CSV, atualizou por cima e confirmou: "funcionou e
@@ -19,10 +28,11 @@ confirmados no aparelho. O usuário atualizou, os dados continuaram, e funcionou
 | Item | Onde |
 |---|---|
 | Código | `C:\Users\kaleu\dev\fastin` · [github.com/Kaleugit/fastin](https://github.com/Kaleugit/fastin) (público) |
-| APK instalado | `C:\Users\kaleu\Desktop\fastin-v1.2.apk` — **v1.2 / versionCode 4**, instalado no aparelho em 2026-08-27 |
+| **APK a instalar** | `C:\Users\kaleu\Desktop\fastin-v1.3.apk` — **v1.3 / versionCode 5**, gerado em 2026-09-03, **ainda não instalado** |
+| APK instalado | `C:\Users\kaleu\Desktop\fastin-v1.2.apk` — v1.2 / versionCode 4, instalado no aparelho em 2026-08-27 |
 | APK da versão anterior | `C:\Users\kaleu\Desktop\fastin.apk` — v1.0.2 / versionCode 3. **Não serve de rollback**: o Android recusa `versionCode` menor. Guardado só como histórico |
-| APK gerado pelo build | `app/build/outputs/apk/release/app-release.apk` — 1,51 MB, assinado v2+v3 (SHA-256 `66d96c44…`) |
-| Épico de correções | `docs/EPICOS.md` (EP-001) · `docs/EPICO-EP-001-correcao-bugs-v1-2-TASKS.md` · tasks canônicas em `memory-system/tasks/` |
+| APK gerado pelo build | `app/build/outputs/apk/release/app-release.apk` — 1,63 MB, assinado v2+v3 (certificado SHA-256 `66d96c44…`, o mesmo das versões anteriores) |
+| Épicos | `docs/EPICOS.md` (EP-001 correções v1.2, EP-002 relógio/marcos/swipe v1.3) · docs `EPICO-EP-00x-*-TASKS.md` · tasks canônicas em `memory-system/tasks/` |
 | Chave de assinatura | `fastin-release.jks` na raiz — **não versionada** |
 | Screenshots das telas | `docs/screenshots/*.png` |
 | Página no portfólio | `kaleu.dev/projetos/fastin` — já em produção |
@@ -46,6 +56,18 @@ Esta é a parte mais importante deste documento.
 - **O R8 preserva os `serializer()`** de cada `@Serializable` — conferido com
   `apkanalyzer dex packages`. Se isso quebrar, o usuário perde a configuração do dashboard.
 - **As seis telas renderizam** — o `ScreenshotTest` compõe e desenha cada uma de verdade.
+
+### Verificado na JVM — v1.3, 2026-09-03 (EP-002)
+
+- **138 testes, 0 falhas** (114 anteriores + 24 novos: marcos escolhidos no relógio, no
+  notifier e no store; swipe do pager; grade de chips; marco de 48h alcançável com o limite
+  de 100h).
+- **Lint: 0 erros.** APK v1.3 assinado com a mesma chave, sem permissão de rede.
+- **Sete screenshots** regenerados — `01-calendario.png` mostra o card compacto com o
+  calendário inteiro abaixo; `07-barra-de-abas.png` mostra a engrenagem.
+- **Não verificado em aparelho:** swipe real (velocidade, conflito com scroll vertical),
+  notificação de um marco escolhido (24h agora notifica por default — DA-011), e o card com
+  9 marcos selecionados (duas colunas).
 
 ### Verificado no aparelho — v1.2, 2026-08-27
 
@@ -72,6 +94,7 @@ O usuário instalou, usou por três dias e depois atualizou para a v1.0.2. Confi
 
 | O quê | Por que ainda importa |
 |---|---|
+| **Limite de abandono em 100h (v1.3)** | Era 48h e coincidia com o maior marco: o jejum virava "abandonado" no instante em que 48h chegava, o relógio esvaziava e o worker se calava. O usuário decidiu subir para 100h (DA-016). Efeito colateral a observar: um par de horários com 49h a 100h de distância, que antes era descartado como esquecimento de registro, agora conta como jejum fechado e entra nos gráficos e no streak. |
 | **Teclado sobre as observações (v1.2)** | A correção é de *window inset* e **não é demonstrável na JVM**: Robolectric não instancia IME real. A v1.2 está no aparelho, mas ninguém digitou nas observações ainda. Se o teclado continuar cobrindo, o problema está no `MainActivity`, não no formulário. **Primeira coisa a olhar.** |
 | **Notificação sobrevivendo ao fechamento (v1.2)** | A persistência tem teste com store reaberto sobre o mesmo arquivo, mas o ciclo real — ligar, matar o app, reabrir e ver o aviso chegar — nunca foi visto. Junta-se ao buraco abaixo. |
 | **Notificações** | O agendamento tem teste (`MilestoneNotifierTest`), mas o disparo real do WorkManager e o pedido de permissão do Android 13+ nunca foram vistos. **É o maior buraco restante.** |

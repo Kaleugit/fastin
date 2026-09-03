@@ -83,12 +83,72 @@ fun <T> ChoiceChipRow(
     }
 }
 
+/**
+ * Múltipla escolha (EP-002): cada chip liga e desliga sozinho. Mesmo desenho de
+ * [ChoiceChipRow], em trilhas de no máximo [maxPerRow] chips distribuídas de forma
+ * equilibrada — 9 opções viram 5 + 4, não 5 + 4 com a última esticada.
+ *
+ * @param options pares de (valor, rótulo), na ordem em que devem aparecer.
+ * @param selected valores atualmente ligados.
+ */
+@Composable
+fun <T> ToggleChipGrid(
+    options: List<Pair<T, String>>,
+    selected: Collection<T>,
+    onToggle: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    maxPerRow: Int = 5,
+    testTagPrefix: String = "",
+) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        balancedChunks(options, maxPerRow).forEach { rowOptions ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .sunken(shape = FastinShapes.chip)
+                    .padding(Spacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                rowOptions.forEach { (value, text) ->
+                    ChoiceChip(
+                        text = text,
+                        selected = value in selected,
+                        onClick = { onToggle(value) },
+                        role = Role.Checkbox,
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(
+                                if (testTagPrefix.isNotEmpty()) {
+                                    Modifier.testTag("${testTagPrefix}_$value")
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Divide em linhas de tamanho o mais parecido possível, nenhuma acima de [maxPerRow].
+ * 9 itens com máximo 5 → 5 + 4; 6 itens → 3 + 3; 5 itens → uma linha só.
+ */
+internal fun <T> balancedChunks(items: List<T>, maxPerRow: Int): List<List<T>> {
+    if (items.isEmpty()) return emptyList()
+    val rows = (items.size + maxPerRow - 1) / maxPerRow
+    val perRow = (items.size + rows - 1) / rows
+    return items.chunked(perRow)
+}
+
 @Composable
 private fun ChoiceChip(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    role: Role = Role.Tab,
 ) {
     val textColor by animateColorAsState(
         targetValue = if (selected) FastinColors.onAccent else FastinColors.textSecondary,
@@ -99,7 +159,7 @@ private fun ChoiceChip(
     Box(
         modifier = modifier
             .defaultMinSize(minHeight = 44.dp)
-            .semantics { this.selected = selected; role = Role.Tab }
+            .semantics { this.selected = selected; this.role = role }
             .pressable(onClick = onClick)
             .then(
                 if (selected) {

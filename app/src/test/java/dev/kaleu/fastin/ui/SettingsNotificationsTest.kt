@@ -3,6 +3,8 @@ package dev.kaleu.fastin.ui
 import android.content.Context
 import android.os.Looper
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -34,6 +36,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -161,6 +164,7 @@ class SettingsNotificationsTest {
                     onExport = {},
                     onPickImport = {},
                     onToggleNotifications = vm::setNotificationsEnabled,
+                    onToggleMilestoneHour = vm::toggleMilestoneHour,
                 )
             }
         }
@@ -248,5 +252,63 @@ class SettingsNotificationsTest {
             "o toque precisa chegar ao disco, não só à tela",
             runBlocking { store.enabled.first() },
         )
+    }
+
+    // --- Marcos escolhidos (EP-002) --------------------------------------------------------
+
+    private fun hoursOnDisk(store: NotificationPrefsStore) =
+        runBlocking { store.milestoneHours.first() }
+
+    private fun isSelected(tag: String): Boolean =
+        runCatching { compose.onNodeWithTag(tag).assertIsSelected() }.isSuccess
+
+    /** Controle negativo: sem nada gravado, os marcos são os que a v1.2 mostrava. */
+    @Test
+    fun sem_nada_gravado_os_marcos_sao_os_da_v1_2() {
+        assertEquals(listOf(16, 18, 20, 24), hoursOnDisk(openStore()))
+    }
+
+    @Test
+    fun marcos_escolhidos_sobrevivem_ao_fim_do_processo() {
+        runBlocking { openStore().setMilestoneHours(listOf(48, 12)) }
+
+        // Store novo sobre o mesmo arquivo == app reaberto. Volta ordenado.
+        assertEquals(listOf(12, 48), hoursOnDisk(openStore()))
+    }
+
+    /** Vazio é escolha, não ausência: "não quero marco nenhum" não pode voltar ao default. */
+    @Test
+    fun conjunto_vazio_persiste_como_escolha() {
+        runBlocking { openStore().setMilestoneHours(emptyList()) }
+        assertTrue(hoursOnDisk(openStore()).isEmpty())
+    }
+
+    @Test
+    fun valor_fora_das_opcoes_e_descartado() {
+        runBlocking { openStore().setMilestoneHours(listOf(16, 13, 99)) }
+        assertEquals(listOf(16), hoursOnDisk(openStore()))
+    }
+
+    /**
+     * O par de toques: ligar 12h **acrescenta** (16h continua), desligar 16h **remove** só
+     * ele. Se o chip fosse de escolha única, o segundo assert falharia.
+     */
+    @Test
+    fun tocar_num_marco_grava_e_a_tela_acompanha() {
+        val store = openStore()
+        mountSettings(store, scopes.first())
+        awaitUntil("a tela montar") { textExists("Ativar avisos") }
+        assertTrue("16h faz parte do default", isSelected("hour_16"))
+        assertFalse("12h não faz parte do default", isSelected("hour_12"))
+
+        compose.onNodeWithTag("hour_12").performScrollTo().performClick()
+        awaitUntil("12h acender na tela") { isSelected("hour_12") }
+        assertTrue("ligar 12h não pode desligar 16h", isSelected("hour_16"))
+        assertEquals(listOf(12, 16, 18, 20, 24), hoursOnDisk(store))
+
+        compose.onNodeWithTag("hour_16").performScrollTo().performClick()
+        awaitUntil("16h apagar na tela") { !isSelected("hour_16") }
+        compose.onNodeWithTag("hour_16").assertIsNotSelected()
+        assertEquals(listOf(12, 18, 20, 24), hoursOnDisk(store))
     }
 }

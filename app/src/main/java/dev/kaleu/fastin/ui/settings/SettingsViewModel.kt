@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dev.kaleu.fastin.data.backup.CsvBackup
 import dev.kaleu.fastin.data.prefs.NotificationPrefsStore
 import dev.kaleu.fastin.data.repo.FastingLogRepository
+import dev.kaleu.fastin.domain.model.MilestoneHours
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +18,8 @@ import java.time.LocalDate
 data class SettingsUiState(
     val totalDays: Int = 0,
     val notificationsEnabled: Boolean = false,
+    /** Marcos escolhidos (EP-002). Nasce no default e o coletor do disco corrige em seguida. */
+    val milestoneHours: List<Int> = MilestoneHours.DEFAULT,
     val message: String? = null,
     val isError: Boolean = false,
 )
@@ -44,6 +47,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             notificationPrefs.enabled.collect { enabled ->
                 _uiState.update { it.copy(notificationsEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            notificationPrefs.milestoneHours.collect { hours ->
+                _uiState.update { it.copy(milestoneHours = hours) }
             }
         }
     }
@@ -92,5 +100,16 @@ class SettingsViewModel(
      */
     fun setNotificationsEnabled(enabled: Boolean) {
         onNotificationsToggled(enabled)
+    }
+
+    /**
+     * Liga ou desliga um marco. Aqui a escrita é direta no store: diferente do toggle, não
+     * há efeito colateral a disparar — o `FastinApplication` já observa o store e reagenda
+     * sozinho, e o relógio também lê dele. O coletor do `init` traz o valor de volta.
+     */
+    fun toggleMilestoneHour(hour: Int) {
+        val current = _uiState.value.milestoneHours
+        val next = if (hour in current) current - hour else current + hour
+        viewModelScope.launch { notificationPrefs.setMilestoneHours(next) }
     }
 }
